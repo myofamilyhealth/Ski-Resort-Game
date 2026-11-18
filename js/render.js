@@ -77,6 +77,46 @@ const Render = {
       ctx.beginPath(); r.points.forEach((p, k) => k ? ctx.lineTo(p.x, p.y) : ctx.moveTo(p.x, p.y)); ctx.stroke();
     }
   },
+  // crisp corduroy stripes & mogul fields when zoomed in
+  drawSurfaceDetail(sc) {
+    const tl = this.toWorld(0, 0), br = this.toWorld(this.W, this.H);
+    const x0 = Math.max(0, Math.floor(tl.x / CELL) - 1), x1 = Math.min(MAP_W - 1, Math.ceil(br.x / CELL) + 1);
+    const y0 = Math.max(0, Math.floor(tl.y / CELL) - 1), y1 = Math.min(MAP_H - 1, Math.ceil(br.y / CELL) + 1);
+    const h = CELL / 2, sp = 1.6;
+    const groove = new Path2D(), ridge = new Path2D(), bumpsS = new Path2D(), bumpsL = new Path2D();
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      const i = y * MAP_W + x;
+      if (!Terrain.runMask[i] || Terrain.powder[i] > 4) continue;
+      const g = Terrain.groom[i];
+      const cx = (x + 0.5) * CELL, cy = (y + 0.5) * CELL;
+      if (g > 0.7) {
+        const a = Terrain.gdir[i], dx = Math.cos(a), dy = Math.sin(a), nx = -dy, ny = dx;
+        const t0 = cx * nx + cy * ny;
+        const reach = h * (Math.abs(nx) + Math.abs(ny));
+        for (let s = Math.ceil((t0 - reach) / sp) * sp; s <= t0 + reach; s += sp) {
+          const ox = cx + nx * (s - t0), oy = cy + ny * (s - t0);
+          let lo = -1e9, hi = 1e9;
+          if (Math.abs(dx) > 1e-6) { const a1 = (cx - h - ox) / dx, a2 = (cx + h - ox) / dx; lo = Math.max(lo, Math.min(a1, a2)); hi = Math.min(hi, Math.max(a1, a2)); } else if (Math.abs(ox - cx) > h) continue;
+          if (Math.abs(dy) > 1e-6) { const b1 = (cy - h - oy) / dy, b2 = (cy + h - oy) / dy; lo = Math.max(lo, Math.min(b1, b2)); hi = Math.min(hi, Math.max(b1, b2)); } else if (Math.abs(oy - cy) > h) continue;
+          if (hi <= lo) continue;
+          groove.moveTo(ox + dx * lo, oy + dy * lo); groove.lineTo(ox + dx * hi, oy + dy * hi);
+          ridge.moveTo(ox + dx * lo + nx * 0.5, oy + dy * lo + ny * 0.5); ridge.lineTo(ox + dx * hi + nx * 0.5, oy + dy * hi + ny * 0.5);
+        }
+      } else if (g < 0.45) {
+        const r = U.seeded(i * 97 + 13);
+        const n = g < 0.2 ? 5 : 3;
+        for (let k = 0; k < n; k++) {
+          const bx = cx + (r() - 0.5) * CELL * 0.9, by = cy + (r() - 0.5) * CELL * 0.9, rad = 1.3 + r() * 1.2;
+          bumpsS.moveTo(bx + rad + 0.6, by + 0.6); bumpsS.ellipse(bx + 0.6, by + 0.6, rad, rad * 0.8, 0, 0, 7);
+          bumpsL.moveTo(bx + rad * 0.5 - 0.3, by - 0.3); bumpsL.ellipse(bx - 0.3, by - 0.3, rad * 0.55, rad * 0.45, 0, 0, 7);
+        }
+      }
+    }
+    sc.lineWidth = 0.55; sc.strokeStyle = 'rgba(120,145,190,0.55)'; sc.stroke(groove);
+    sc.lineWidth = 0.4; sc.strokeStyle = 'rgba(255,255,255,0.9)'; sc.stroke(ridge);
+    sc.fillStyle = 'rgba(110,130,175,0.35)'; sc.fill(bumpsS);
+    sc.fillStyle = 'rgba(255,255,255,0.8)'; sc.fill(bumpsL);
+  },
   drawSurface(ctx, WW, HH) {
     if (!G.runs.length) return;
     const d = devicePixelRatio || 1, cam = this.cam;
@@ -86,8 +126,9 @@ const Render = {
     const sc = s.getContext('2d');
     sc.setTransform(1, 0, 0, 1, 0, 0); sc.globalCompositeOperation = 'source-over'; sc.clearRect(0, 0, s.width, s.height);
     sc.setTransform(d * cam.zoom, 0, 0, d * cam.zoom, d * (this.W / 2 - cam.x * cam.zoom), d * (this.H / 2 - cam.y * cam.zoom));
-    sc.imageSmoothingEnabled = cam.zoom < 1.5;
+    sc.imageSmoothingEnabled = true;
     sc.drawImage(Terrain.cSurf, 0, 0, WW, HH);
+    if (cam.zoom > 1.1) this.drawSurfaceDetail(sc);
     sc.globalCompositeOperation = 'destination-in';
     sc.strokeStyle = '#000'; sc.lineCap = 'round'; sc.lineJoin = 'round';
     for (const r of G.runs) { sc.lineWidth = r.width; sc.beginPath(); r.points.forEach((p, k) => k ? sc.lineTo(p.x, p.y) : sc.moveTo(p.x, p.y)); sc.stroke(); }
@@ -185,17 +226,19 @@ const Render = {
     const F = PARK_FEATURES[f.kind];
     ctx.save(); ctx.translate(f.x, f.y); ctx.rotate(f.a || 0);
     const q = r.park.quality;
-    const s = F.size * 4;
+    const s = F.size * 6;
     if (F.icon === 'jump') {
       ctx.fillStyle = `rgba(255,255,255,${0.7 + q * 0.3})`; ctx.strokeStyle = '#7a8aa8'; ctx.lineWidth = 0.6;
       ctx.beginPath(); ctx.moveTo(-s * 2, -s); ctx.lineTo(0, -s * 0.8); ctx.lineTo(0, s * 0.8); ctx.lineTo(-s * 2, s); ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.fillStyle = 'rgba(120,140,180,0.35)'; ctx.fillRect(0, -s * 0.8, s * 1.2, s * 1.6);
       ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fillRect(s * 1.2, -s * 1.1, s * 2.5, s * 2.2); ctx.strokeRect(s * 1.2, -s * 1.1, s * 2.5, s * 2.2);
     } else if (F.icon === 'rail' || F.icon === 'box') {
-      ctx.strokeStyle = F.icon === 'rail' ? '#c0c4cc' : '#e0a030'; ctx.lineWidth = F.icon === 'rail' ? 1 : 2.5;
-      ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(8, 0); ctx.stroke();
+      ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = F.icon === 'rail' ? 3 : 5;
+      ctx.beginPath(); ctx.moveTo(-11, 1.5); ctx.lineTo(11, 1.5); ctx.stroke();
+      ctx.strokeStyle = F.icon === 'rail' ? '#d8dce6' : '#f0a020'; ctx.lineWidth = F.icon === 'rail' ? 1.6 : 4;
+      ctx.beginPath(); ctx.moveTo(-11, 0); ctx.lineTo(11, 0); ctx.stroke();
     } else if (F.icon === 'wall') {
-      ctx.fillStyle = '#7d5a3c'; ctx.fillRect(-6, -1.5, 12, 3);
+      ctx.fillStyle = '#7d5a3c'; ctx.fillRect(-9, -2.5, 18, 5); ctx.strokeStyle = '#3d2a1c'; ctx.lineWidth = 0.8; ctx.strokeRect(-9, -2.5, 18, 5);
     } else if (F.icon === 'pipe') {
       ctx.fillStyle = 'rgba(150,175,215,0.6)'; ctx.fillRect(-55, -9, 110, 18);
       ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(-55, -9, 110, 18);

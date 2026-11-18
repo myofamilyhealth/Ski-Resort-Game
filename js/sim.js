@@ -68,6 +68,7 @@ const Sim = {
       l.ridesToday = 0;
     }
     this.avalancheMorning(w);
+    G.events = G.events.filter(e => e.day >= G.dayNum);
     World.rebuildNetwork();
     if (this.operating()) {
       this.computeVisitors(w, dt);
@@ -126,7 +127,9 @@ const Sim = {
     const km = this.openKmBy(); const openKm = km.green + km.blue + km.black + km.dblack;
     const openLifts = G.lifts.filter(l => this.liftIsOpen(l) && l.reachable);
     if (!openLifts.length || openKm <= 0 || !World.built('ticket').length) {
-      T.visitors = 0; T.closedReason = !World.built('ticket').length ? 'No ticket office' : 'No open lifts/runs';
+      T.visitors = 0;
+      const holds = G.lifts.some(l => l.buildDays <= 0 && l.holdFrac >= 1);
+      T.closedReason = !World.built('ticket').length ? 'no finished Ticket Office' : !G.lifts.some(l => l.buildDays <= 0) ? 'no finished lifts' : holds ? 'lifts on wind hold' : G.runs.some(r => r.avyClosed) ? 'avalanche closures' : G.runs.every(r => this.runDepth(r) < 30) ? 'not enough snow (30 cm needed)' : 'no lift-served open runs';
       return;
     }
     const market = 250 + G.awareness * 75;
@@ -412,6 +415,7 @@ const Sim = {
     if (G.history.length > 400) G.history.shift();
     // marketing & awareness
     this.updateMarketing(T);
+    if (!operating && !G.showClosedReports) { Sim.runNight(null); return; }
     UI.showDayReport(T);
   },
 
@@ -570,7 +574,7 @@ const Sim = {
     const cold = Math.min(w.tLo, tomorrow ? tomorrow.tLo : w.tLo);
     if (pumps > 0 && cold <= -3) {
       const smF = U.clamp(World.staffFactor('snowmaker'), 0, 1);
-      for (const r of G.runs.filter(r => r.snowmaking && r.smOn)) {
+      for (const r of G.runs.filter(r => r.snowmaking && r.smOn && this.runDepth(r) < 110)) {
         const km = r.len / 1000;
         if (smKm + km > pumps * smF + 0.001) continue;
         smKm += km;
@@ -635,6 +639,7 @@ const Sim = {
       return;
     }
     this.startDay();
+    Save.save();
   },
 
   openSeason() {

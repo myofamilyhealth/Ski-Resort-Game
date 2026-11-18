@@ -13,6 +13,7 @@ const UI = {
     document.querySelectorAll('[data-modal]').forEach(b => b.onclick = () => this.openModal(b.dataset.modal));
     document.querySelectorAll('[data-ov]').forEach(b => b.onclick = () => { Render.overlay = Render.overlay === b.dataset.ov ? 'none' : b.dataset.ov; this.refreshOverlayBtns(); });
     $('#btnEndShift').onclick = () => Drive.end('You ended your shift early.');
+    document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
     setInterval(() => { if (G) { this.refreshTop(); if (!this.tool && !document.activeElement.matches('input,select') && (this._pc = (this._pc || 0) + 1) % 3 === 0) this.renderPanel(); } }, 500);
   },
 
@@ -137,7 +138,7 @@ const UI = {
         if (U.dist(last, w) < 8) { this.finishRun(); return; }
       } else {
         // snap start to a lift top or run nearby
-        for (const l of G.lifts) if (U.dist(l.top, w) < 40 / Render.cam.zoom * 0.5 + 15) { w = { x: l.top.x + (w.x - l.top.x) * 0.3, y: l.top.y + (w.y - l.top.y) * 0.3 }; break; }
+        for (const l of G.lifts) if (U.dist(l.top, w) < 60) { w = { x: l.top.x, y: l.top.y }; break; }
       }
       // snap to lift bottom when finishing near one
       for (const l of G.lifts) if (U.dist(l.bottom, w) < 30 && t.points.length) { w = { x: l.bottom.x, y: l.bottom.y - 6 }; }
@@ -188,6 +189,7 @@ const UI = {
         else if (ent.type === 'lift') { World.earn(ent.cost * 0.2, 'salvage'); World.removeLift(ent); }
         else { const B = BUILDINGS[ent.kind]; World.earn(B.levels[0].cost * 0.2, 'salvage'); G.buildings = G.buildings.filter(b => b !== ent); World.rebuildNetwork(); }
         if (this.sel === ent) this.sel = null;
+        Agents.reset();
         World.log(`🧨 Demolished ${name}.`, 'build');
         this.renderPanel();
       });
@@ -500,7 +502,9 @@ const UI = {
     const m = $('#modal'); const box = $('#modalBox');
     m.classList.add('show');
     const f = this['m_' + this.modal];
+    const keep = this._lastModal === this.modal ? box.scrollTop : 0; this._lastModal = this.modal;
     box.innerHTML = f ? f.call(this, this.modalData) : '';
+    box.scrollTop = keep;
     box.querySelectorAll('[data-close]').forEach(e => e.onclick = () => this.closeModal());
     box.querySelectorAll('[data-modal]').forEach(e => e.onclick = () => this.openModal(e.dataset.modal));
     if (this['b_' + this.modal]) this['b_' + this.modal](box, this.modalData);
@@ -765,9 +769,11 @@ const UI = {
       <button class="btn primary" id="drive">🚜 Drive a groomer tonight</button> `;
     } else h += `<p class="hint">Buy a snowcat in <b>Fleet</b> to groom (or drive one yourself!).</p>`;
     h += `<button class="btn" id="sleep">😴 Let the crew groom & sleep</button></div>`;
+    h += `<label class="hint"><input type="checkbox" id="showClosed" ${G.showClosedReports ? 'checked' : ''}> Also show this report on days the resort is closed (pre-season, storm closures)</label>`;
     return h;
   },
   b_report(box) {
+    box.querySelector('#showClosed').onchange = (e) => { G.showClosedReports = e.target.checked; };
     const d = box.querySelector('#drive');
     if (d) d.onclick = () => { const g = G.groomers.find(x => x.id == box.querySelector('#driveSel').value); this.modal = null; $('#modal').classList.remove('show'); G.speed = this.prevSpeed || 1; this.prevSpeed = null; Drive.start(g); };
     box.querySelector('#sleep').onclick = () => { this.modal = null; $('#modal').classList.remove('show'); G.speed = this.prevSpeed || 1; this.prevSpeed = null; Sim.runNight(null); Save.save(); };
