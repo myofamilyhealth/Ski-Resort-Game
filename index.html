@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Powderline: Ski Resort Tycoon</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header id="top">
+  <div class="brand">🏔️ <b>Powderline</b></div>
+  <div class="stat"><small>Cash</small><b id="cash">$0</b></div>
+  <div class="stat"><small id="date">—</small><b id="clock">—</b></div>
+  <div class="stat" title="Weather"><small>Weather</small><b id="wx">—</b></div>
+  <div class="stat" title="Mid-mountain base depth"><small>Base</small><b id="depth">—</b></div>
+  <div class="stat" title="On the hill now / visitors today"><small>Guests</small><b id="guests">—</b></div>
+  <div class="stat" title="Average lift line"><small>Lines</small><b id="wait">—</b></div>
+  <div class="stat" title="Reputation (0-100)"><small>Rep</small><b id="rep">—</b></div>
+  <div class="stat" title="Awareness (0-100)"><small>Aware</small><b id="aw">—</b></div>
+  <div class="speed">
+    <button data-speed="0" title="Pause (Space)">⏸</button>
+    <button data-speed="1" title="Normal (1)">▶</button>
+    <button data-speed="2" title="Fast (2)">⏩</button>
+    <button data-speed="4" title="Faster (3)">⏩⏩</button>
+    <button data-speed="10" title="Fastest (4)">⏭</button>
+    <button id="btnSkip" title="Skip to the end of the day">🌆 Skip to evening</button>
+  </div>
+  <button id="btnOpen" class="btn open">🎿 Open for Season</button>
+  <nav class="mgmt">
+    <button data-modal="finance" title="Finances">📊</button>
+    <button data-modal="staff" title="Staff">👷</button>
+    <button data-modal="fleet" title="Groomers & Snowmobiles">🚜</button>
+    <button data-modal="patrol" title="Ski Patrol & Dogs">⛑️</button>
+    <button data-modal="marketing" title="Marketing & Events">📣</button>
+    <button data-modal="pricing" title="Pricing">💲</button>
+    <button data-modal="weather" title="Weather & Snow Report">🌨️</button>
+    <button data-modal="guests" title="Guest Satisfaction">😀</button>
+    <button data-modal="help" title="How to play">❓</button>
+  </nav>
+</header>
+<main>
+  <aside id="tools"></aside>
+  <section id="viewWrap">
+    <canvas id="view"></canvas>
+    <div id="hoverTip"></div>
+    <div id="overlays">
+      <span>Map view:</span>
+      <button data-ov="slope">Slope</button>
+      <button data-ov="groom">Grooming</button>
+      <button data-ov="snow">Snow depth</button>
+    </div>
+    <div id="toasts"></div>
+    <div id="driveHud">
+      <div id="dhStats"></div>
+      <div id="dhKeys">W/S throttle · A/D steer · <b>Space</b> tiller · <b>B</b> blade · <b>E</b> winch</div>
+      <div id="dhMsg"></div>
+      <button id="btnEndShift" class="btn">🅿️ Park & end shift</button>
+    </div>
+  </section>
+  <aside id="panel"></aside>
+</main>
+<footer id="log"></footer>
+<div id="modal"><div id="modalBox"></div></div>
+
+<script src="js/util.js"></script>
+<script src="js/data.js"></script>
+<script src="js/terrain.js"></script>
+<script src="js/weather.js"></script>
+<script src="js/world.js"></script>
+<script src="js/sim.js"></script>
+<script src="js/grooming.js"></script>
+<script src="js/agents.js"></script>
+<script src="js/render.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
