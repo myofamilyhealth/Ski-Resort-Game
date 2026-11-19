@@ -420,6 +420,11 @@ const Sim = {
     // marketing & awareness
     this.updateMarketing(T);
     if (!operating && !G.showClosedReports) { Sim.runNight(null); return; }
+    if (operating && G.autoGroom) {
+      World.log(`🌆 Day done: ${T.visitors.toLocaleString()} guests, ${T.sat}% happy, net ${U.money(T.net)}. 🚜 Crew is grooming overnight (auto).`, T.net >= 0 ? 'good' : 'warn');
+      Sim.runNight(null);
+      return;
+    }
     UI.showDayReport(T);
   },
 

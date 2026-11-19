@@ -590,6 +590,7 @@ const UI = {
   m_fleet() {
     const bays = World.vehicleBays(); const used = G.groomers.length + G.sleds.length;
     let h = this.head('🚜 Fleet: Groomers & Snowmobiles') + `<p class="hint">Vehicles need a <b>Vehicle Maintenance Shop</b>. Bays used: <b>${used} / ${bays}</b>. Each groomer needs a <b>Groomer Operator</b> to run at night — or drive one yourself!</p>`;
+    h += `<div class="card"><label><input type="checkbox" id="autoGroomF" ${G.autoGroom ? 'checked' : ''}> <b>Auto night grooming:</b> the crew grooms every night automatically and the end-of-day screen is skipped.</label><small class="dim">Turn this off when you want to drive a snowcat yourself.</small></div>`;
     h += `<h4>Your snowcats</h4>`;
     if (!G.groomers.length) h += '<p class="dim">No groomers yet.</p>';
     for (const g of G.groomers) {
@@ -605,6 +606,7 @@ const UI = {
     return h + '</div>';
   },
   b_fleet(box) {
+    box.querySelector('#autoGroomF').onchange = (e) => { G.autoGroom = e.target.checked; World.log(`🚜 Auto night grooming ${G.autoGroom ? 'ON: the crew grooms every night' : 'OFF: you choose each evening'}.`); };
     const bayCheck = () => { if (G.groomers.length + G.sleds.length >= World.vehicleBays()) { this.toast('No free vehicle bays — build or upgrade a Maintenance Shop.', 'bad'); return false; } return true; };
     box.querySelectorAll('[data-buyg]').forEach(b => b.onclick = () => {
       const M = GROOMERS[b.dataset.buyg]; if (!bayCheck()) return; if (G.cash < M.price) return this.toast('Not enough cash.', 'bad');
@@ -758,7 +760,8 @@ const UI = {
         <p>A <b>Magic Carpet</b> near the base makes a great beginner area.</p>`,
       groom: `<p>Skiers wear runs down into bumps during the day. Every night your snowcats <b>groom</b> them flat again (that's the "corduroy" lines).</p>
         <p>At the end of each day choose <b>🚜 Drive a groomer tonight</b> to do it yourself:<br><b>W / S</b> drive forward / back · <b>A / D</b> steer · <b>Space</b> tiller on/off · <b>B</b> blade (flattens big bumps) · <b>E</b> winch (steep runs).</p>
-        <p>Orange dots mark the run edges in the dark, and the minimap shows what still needs grooming (red). Very steep runs need a <b>winch</b> snowcat, which you can buy in 🚜 Fleet.</p>`,
+        <p>Orange dots mark the run edges in the dark, and the minimap shows what still needs grooming (red). Very steep runs need a <b>winch</b> snowcat, which you can buy in 🚜 Fleet.</p>
+        <p>Don't want to choose every evening? Turn on <b>Auto night grooming</b> in 🚜 Fleet (or tick the box on the end-of-day screen) and the crew grooms every night automatically.</p>`,
       snow: `<p>Runs need <b>30 cm of snow</b> to open. Storms bring fresh powder, and powder days bring big crowds.</p>
         <p>The 🌨️ Weather screen shows a 7-day forecast. Warm days melt snow. A <b>Pump House</b> plus snowmaking on your runs adds snow on cold nights.</p>`,
       money: `<p>You earn money from lift tickets, season passes, rentals, food and more. Your biggest costs are staff wages and lift power.</p>
@@ -797,12 +800,14 @@ const UI = {
       h += `<label>Drive yourself: <select id="driveSel">${G.groomers.map(g => `<option value="${g.id}">${g.name} — ${GROOMERS[g.kind].name}</option>`).join('')}</select></label>
       <button class="btn primary" id="drive">🚜 Drive a groomer tonight</button> `;
     } else h += `<p class="hint">Buy a snowcat in <b>Fleet</b> to groom (or drive one yourself!).</p>`;
-    h += `<button class="btn" id="sleep">😴 Let the crew groom & sleep</button></div>`;
+    h += `<button class="btn" id="sleep">😴 Let the crew groom & sleep</button>
+      <label class="autog"><input type="checkbox" id="autoGroom" ${G.autoGroom ? 'checked' : ''}> <b>Always let the crew groom at night</b> and skip this screen. You can turn it off in 🚜 Fleet.</label></div>`;
     h += `<label class="hint"><input type="checkbox" id="showClosed" ${G.showClosedReports ? 'checked' : ''}> Also show this report on days the resort is closed (pre-season, storm closures)</label>`;
     return h;
   },
   b_report(box) {
     box.querySelector('#showClosed').onchange = (e) => { G.showClosedReports = e.target.checked; };
+    box.querySelector('#autoGroom').onchange = (e) => { G.autoGroom = e.target.checked; };
     const d = box.querySelector('#drive');
     if (d) d.onclick = () => { const g = G.groomers.find(x => x.id == box.querySelector('#driveSel').value); this.modal = null; $('#modal').classList.remove('show'); G.speed = this.prevSpeed || 1; this.prevSpeed = null; Drive.start(g); };
     box.querySelector('#sleep').onclick = () => { this.modal = null; $('#modal').classList.remove('show'); G.speed = this.prevSpeed || 1; this.prevSpeed = null; Sim.runNight(null); Save.save(); };
