@@ -257,8 +257,9 @@ const World = {
     this.log(`Upgrading ${B.name} to level ${b.level} (${next.days} days).`, 'build');
     return { ok: true };
   },
-  bstat(b, key) { return BUILDINGS[b.kind].levels[b.level - 1][key] || 0; },
-  built(kind) { return G.buildings.filter(b => b.kind === kind && b.buildDays <= 0); },
+  // buildings keep working at their old level while an upgrade is under construction
+  bstat(b, key) { const lv = b.buildDays > 0 ? b.level - 1 : b.level; return lv >= 1 ? (BUILDINGS[b.kind].levels[lv - 1][key] || 0) : 0; },
+  built(kind) { return G.buildings.filter(b => b.kind === kind && (b.buildDays <= 0 || b.level > 1)); },
   sumStat(kind, key) { return this.built(kind).reduce((a, b) => a + this.bstat(b, key), 0); },
 
   // ----- Network (connectivity graph) -----
@@ -344,7 +345,7 @@ const World = {
     const lifts = G.lifts.filter(l => l.buildDays <= 0);
     const runKm = G.runs.reduce((a, r) => a + r.len, 0) / 1000;
     const vis = G.history.length ? G.history[G.history.length - 1].visitors : 600;
-    const smKm = G.runs.filter(r => r.snowmaking).reduce((a, r) => a + r.len, 0) / 1000;
+    const smKm = G.runs.filter(r => r.snowmaking).reduce((a, r) => a + r.len * SNOWGUNS[(r.smTier || 1) - 1].crew, 0) / 1000;
     const seats = this.sumStat('lodge', 'seats') + this.sumStat('restaurant', 'seats');
     const vehicles = G.groomers.length + G.sleds.length;
     const parks = G.runs.filter(r => r.park).length;

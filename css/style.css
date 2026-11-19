@@ -155,3 +155,15 @@ details summary { cursor: pointer; color: var(--accent); margin: 8px 0; }
 .spark { cursor: pointer; margin: 4px 0; } .spark .legend { display: none; } .spark .hint { font-size: 11px; }
 
 .bar.big { height: 12px; margin: 12px 0; }
+
+.smrow { background: var(--panel2); border: 1px solid var(--line); border-left: 3px solid var(--line); border-radius: 7px; padding: 6px 9px; display: flex; flex-direction: column; gap: 4px; }
+.smrow.on { border-left-color: #4fb3ff; }
+.smrow small { min-width: 0; }
+.warnc { color: var(--warn); }
+.switch { position: relative; display: inline-block; width: 38px; height: 20px; margin: 0; flex-shrink: 0; }
+.switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+.switch i { position: absolute; inset: 0; background: #3a4a5e; border-radius: 20px; cursor: pointer; transition: background .15s; }
+.switch i::before { content: ''; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform .15s; }
+.switch input:checked + i { background: #2ecc71; }
+.switch input:checked + i::before { transform: translateX(18px); }
+.switch input:focus-visible + i { outline: 2px solid var(--accent); outline-offset: 2px; }

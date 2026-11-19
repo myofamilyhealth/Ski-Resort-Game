@@ -196,3 +196,10 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_TEMP = { 9: 1, 10: -3, 11: -7, 0: -9, 1: -8, 2: -4, 3: 0, 4: 3 }; // mid-mountain mean °C (Oct..Apr)
 const MONTH_STORM = { 9: 0.12, 10: 0.22, 11: 0.3, 0: 0.3, 1: 0.3, 2: 0.27, 3: 0.17, 4: 0.1 };
+
+// Snowmaking gun systems (per run). install/upgrade cost is per meter of trail.
+const SNOWGUNS = [
+  { name: 'Basic Fan Guns', short: 'Basic', perM: 185, temp: -3, out: 1.0, cost: 1.0, crew: 1.0, desc: 'Manual fan guns. Need -3°C or colder.' },
+  { name: 'Automated Fan Guns', short: 'Automated', perM: 120, temp: -2, out: 1.4, cost: 0.85, crew: 0.7, desc: 'Weather-sensing guns. Work at -2°C, 40% more snow, fewer crew.' },
+  { name: 'Low-Energy Tower Guns', short: 'Tower', perM: 160, temp: -1, out: 1.8, cost: 0.65, crew: 0.5, desc: 'Top-of-the-line towers. Work at -1°C, 80% more snow, cheapest to run.' },
+];

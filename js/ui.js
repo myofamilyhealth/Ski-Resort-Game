@@ -178,7 +178,7 @@ const UI = {
       const cost = Math.round(run.len * 185);
       this.confirm(`Install snowmaking (pipe, hydrants & fan guns) on ${run.name}? ${Math.round(run.len)} m × $185/m = ${U.money(cost)}. Needs a Pump House and Snowmakers.`, () => {
         if (G.cash < cost) return this.toast('Not enough cash.', 'bad');
-        World.spend(cost, 'construction'); run.snowmaking = true; run.smOn = true;
+        World.spend(cost, 'construction'); run.snowmaking = true; run.smOn = true; run.smTier = 1;
         World.log(`💧 Snowmaking installed on ${run.name}.`, 'build'); this.renderPanel();
       });
     } else if (t.kind === 'demolish') {
@@ -342,8 +342,7 @@ const UI = {
         for (const k in PARK_FEATURES) { const F = PARK_FEATURES[k]; h += `<div class="item ${t.sub === k ? 'on' : ''}" data-feat="${k}"><div class="row"><b>${F.name}</b><span>${U.money(F.cost)}</span></div></div>`; }
         h += '</div>';
       } else if (t.kind === 'snowmaking') {
-        h += `<h3>💧 Snowmaking</h3><p class="hint">Click a run to install snow guns ($185/m). Click again to toggle it on/off. Guns run on nights ≤ -3°C if you have a <b>Pump House</b> with enough capacity and <b>Snowmakers</b> on staff.</p>
-        <p>Pump capacity: <b>${World.sumStat('pumphouse', 'km')} km</b> · Installed: <b>${(G.runs.filter(r => r.snowmaking).reduce((a, r) => a + r.len, 0) / 1000).toFixed(1)} km</b></p>`;
+        h += this.snowPanel();
       } else if (t.kind === 'demolish') {
         h += `<h3>🧨 Demolish</h3><p class="hint">Click a run, lift or building to remove it. Lifts & buildings return 20% salvage.</p>`;
       }
@@ -359,6 +358,7 @@ const UI = {
     if (q('#runW')) q('#runW').oninput = (e) => { t.width = +e.target.value; e.target.previousElementSibling.textContent = t.width + ' m'; };
     if (q('#runW')) q('#runW').onchange = () => this.renderPanel();
     if (q('#brushR')) q('#brushR').oninput = (e) => { t.brush = +e.target.value; e.target.previousElementSibling.textContent = t.brush + ' m'; };
+    if (t && t.kind === 'snowmaking') this.bindSnowPanel(p);
     if (q('#finishRun')) q('#finishRun').onclick = () => this.finishRun();
     if (q('#moreLifts')) q('#moreLifts').onclick = () => { this.showAllLifts = !this.showAllLifts; this.renderPanel(); };
     p.querySelectorAll('[data-bcat]').forEach(e => e.onclick = () => { this.bldCat = e.dataset.bcat; this.renderPanel(); });
@@ -371,6 +371,73 @@ const UI = {
     p.querySelectorAll('[data-modal]').forEach(e => e.onclick = () => this.openModal(e.dataset.modal));
     if (q('#selName')) q('#selName').onchange = (e) => { this.sel.name = e.target.value || this.sel.name; };
     if (q('#groomPlan')) q('#groomPlan').onchange = (e) => { this.sel.groomPlan = e.target.value; };
+  },
+  snowPanel() {
+    const w = Weather.today(), tm = G.wx[1];
+    const cold = Math.min(w.tLo, tm ? tm.tLo : w.tLo);
+    const pumpB = G.buildings.filter(b => b.kind === 'pumphouse');
+    const pumps = World.sumStat('pumphouse', 'km');
+    const target = G.smTarget || 110;
+    const inst = G.runs.filter(r => r.snowmaking);
+    const onKm = inst.filter(r => r.smOn).reduce((a, r) => a + r.len, 0) / 1000;
+    const active = inst.filter(r => r.smOn && Sim.runDepth(r) < target && cold <= SNOWGUNS[(r.smTier || 1) - 1].temp);
+    let estKm = 0, estCost = 0;
+    for (const r of active.sort((a, b) => Sim.runDepth(a) - Sim.runDepth(b))) { const km = r.len / 1000; if (estKm + km > pumps + 0.001) continue; estKm += km; estCost += km * 2400 * SNOWGUNS[(r.smTier || 1) - 1].cost; }
+    const tonight = !pumps ? '<b class="bad">No pump house</b>' : cold > -1 ? `<b class="bad">Too warm (${cold}°C)</b>` : estKm ? `<b class="ok">Making snow on ${estKm.toFixed(1)} km</b>` : '<b>Nothing to do</b>';
+    let h = `<h3>💧 Snowmaking Control</h3>
+    <div class="card"><div class="kv"><span>Tonight's low</span><b>${cold}°C</b></div>
+      <div class="kv"><span>Tonight</span>${tonight}</div>
+      ${estCost ? `<div class="kv"><span>Est. cost tonight</span><b>${U.money(estCost)}</b></div>` : ''}
+      <div class="kv"><span>Pump capacity</span><b>${onKm.toFixed(1)} / ${pumps} km switched on</b></div>
+      <div class="bar"><i style="width:${pumps ? Math.min(100, onKm / pumps * 100) : 0}%;background:${onKm > pumps ? '#f5b700' : '#4fb3ff'}"></i></div>
+      ${onKm > pumps ? '<small class="dim">More guns are on than your pumps can feed. The thinnest runs get snow first.</small>' : ''}
+      <div class="kv"><span>Snowmakers</span><b>${G.staff.snowmaker} / ${World.staffNeeds().snowmaker}</b></div></div>`;
+    // pump house
+    if (!pumpB.length) h += `<div class="card"><b>💧 No Pump House yet</b><p class="hint">Snow guns need water and air from a Pump House.</p><button class="btn primary" id="smBuildPump">Build a Pump House (${U.money(BUILDINGS.pumphouse.levels[0].cost)})</button></div>`;
+    else for (const b of pumpB) {
+      const nx = BUILDINGS.pumphouse.levels[b.level];
+      h += `<div class="card"><div class="row"><b>💧 Pump House · Level ${b.level}</b><span>${World.bstat(b, 'km')} km${b.buildDays > 0 ? ' · 🏗 upgrading ' + b.buildDays + 'd' : ''}</span></div>
+        ${nx ? `<button class="btn small" data-smpump="${b.id}" ${b.buildDays > 0 ? 'disabled' : ''}>⬆ Upgrade to ${nx.km} km (${U.money(nx.cost)})</button>` : '<small class="dim">Fully upgraded.</small>'}</div>`;
+    }
+    h += `<label>Stop making snow when a run reaches <b>${target} cm</b><input type="range" id="smTarget" min="50" max="200" step="10" value="${target}"></label>
+    <div class="btns"><button class="btn" id="smAllOn">✅ All guns ON</button><button class="btn" id="smAllOff">⛔ All guns OFF</button></div>
+    <p class="hint">Click a run on the map to install guns, or use the lists below.</p>`;
+    const withSM = G.runs.filter(r => r.snowmaking), without = G.runs.filter(r => !r.snowmaking);
+    h += `<h4>❄️ Runs with snowmaking (${withSM.length})</h4><div class="list">`;
+    if (!withSM.length) h += '<p class="dim">None yet. Buy guns for a run below.</p>';
+    for (const r of withSM) {
+      const dep = Sim.runDepth(r);
+      const tier = r.smTier || 1, gun = SNOWGUNS[tier - 1], nxt = SNOWGUNS[tier];
+      const st = !r.smOn ? '<span class="dim">Off</span>' : dep >= target ? '<span class="ok">Deep enough</span>' : cold > gun.temp ? '<span class="warnc">Too warm</span>' : '<span class="ok">Making snow ❄</span>';
+      h += `<div class="smrow ${r.smOn ? 'on' : ''}"><div class="row"><b>${DIFF[r.diff].icon} ${r.name}</b><label class="switch" title="Turn guns on/off"><input type="checkbox" data-smtog="${r.id}" ${r.smOn ? 'checked' : ''}><i></i></label></div>
+        <div class="row"><small>${dep} cm · ${gun.short} guns (${gun.temp}°C) · ${st}</small>${nxt ? `<button class="btn small" data-smupg="${r.id}" title="${nxt.desc}">⬆ ${nxt.short} ${U.money(r.len * nxt.perM)}</button>` : '<small class="ok">Max level</small>'}</div></div>`;
+    }
+    h += `</div><h4>🛒 Runs without snowmaking (${without.length})</h4>`;
+    if (without.length) {
+      const all = without.reduce((a, r) => a + Math.round(r.len * SNOWGUNS[0].perM), 0);
+      h += `<button class="btn primary small" id="smBuyAll" ${G.cash < all ? 'disabled' : ''}>Buy guns for all ${without.length} runs · ${U.money(all)}</button><div class="list" style="margin-top:6px">`;
+      for (const r of without) {
+        const c = Math.round(r.len * SNOWGUNS[0].perM);
+        h += `<div class="smrow"><div class="row"><b>${DIFF[r.diff].icon} ${r.name}</b><button class="btn small" data-sminst="${r.id}" ${G.cash < c ? 'disabled' : ''}>Buy ${U.money(c)}</button></div><small class="dim">${Math.round(r.len)} m · ${Sim.runDepth(r)} cm of snow now</small></div>`;
+      }
+      h += '</div>';
+    } else if (G.runs.length) h += '<p class="ok">Every run has snowmaking. ✔</p>';
+    if (!G.runs.length) h += '<p class="dim">Draw a run first.</p>';
+    h += `<details><summary>Snow gun levels</summary>${SNOWGUNS.map((g, i) => `<p class="hint"><b>${i + 1}. ${g.name}</b>: ${g.desc}</p>`).join('')}</details>`;
+    return h;
+  },
+  bindSnowPanel(p) {
+    const q = (s) => p.querySelector(s);
+    const byId = (id) => G.runs.find(r => r.id == id);
+    if (q('#smTarget')) { q('#smTarget').oninput = (e) => { e.target.previousElementSibling.textContent = e.target.value + ' cm'; }; q('#smTarget').onchange = (e) => { G.smTarget = +e.target.value; this.renderPanel(); }; }
+    if (q('#smAllOn')) q('#smAllOn').onclick = () => { G.runs.forEach(r => { if (r.snowmaking) r.smOn = true; }); World.log('💧 All snow guns switched ON.'); this.renderPanel(); };
+    if (q('#smAllOff')) q('#smAllOff').onclick = () => { G.runs.forEach(r => { if (r.snowmaking) r.smOn = false; }); World.log('💧 All snow guns switched OFF.'); this.renderPanel(); };
+    if (q('#smBuyAll')) q('#smBuyAll').onclick = () => { const list = G.runs.filter(r => !r.snowmaking); const c = list.reduce((a, r) => a + Math.round(r.len * SNOWGUNS[0].perM), 0); if (G.cash < c) return this.toast('Not enough cash.', 'bad'); World.spend(c, 'construction'); list.forEach(r => { r.snowmaking = true; r.smOn = true; r.smTier = 1; }); World.log(`💧 Snowmaking installed on ${list.length} runs (${U.money(c)}).`, 'build'); this.renderPanel(); };
+    if (q('#smBuildPump')) q('#smBuildPump').onclick = () => { this.bldCat = 'ops'; this.setTool('building', { sub: 'pumphouse' }); };
+    p.querySelectorAll('[data-smpump]').forEach(b => b.onclick = () => { const bd = G.buildings.find(x => x.id == b.dataset.smpump); const r = World.upgradeBuilding(bd); if (!r.ok) this.toast(r.err, 'bad'); this.renderPanel(); });
+    p.querySelectorAll('[data-smtog]').forEach(b => b.onchange = () => { const r = byId(b.dataset.smtog); r.smOn = b.checked; this.renderPanel(); });
+    p.querySelectorAll('[data-sminst]').forEach(b => b.onclick = () => { const r = byId(b.dataset.sminst); const c = Math.round(r.len * SNOWGUNS[0].perM); if (G.cash < c) return this.toast('Not enough cash.', 'bad'); World.spend(c, 'construction'); r.snowmaking = true; r.smOn = true; r.smTier = 1; World.log(`💧 Snowmaking installed on ${r.name}.`, 'build'); this.renderPanel(); });
+    p.querySelectorAll('[data-smupg]').forEach(b => b.onclick = () => { const r = byId(b.dataset.smupg); const t = r.smTier || 1; const g = SNOWGUNS[t]; const c = Math.round(r.len * g.perM); if (G.cash < c) return this.toast('Not enough cash.', 'bad'); World.spend(c, 'construction'); r.smTier = t + 1; World.log(`💧 ${r.name} upgraded to ${g.name}.`, 'build'); this.renderPanel(); });
   },
   guidePanel() {
     const has = (k) => World.built(k).length > 0 || G.buildings.some(b => b.kind === k);
@@ -412,7 +479,7 @@ const UI = {
       <div class="kv"><span>Snow depth</span><b>${Sim.runDepth(e)} cm${e.smDepth > 0 ? ` (${Math.round(e.smDepth)} man-made)` : ''}</b></div>
       <div class="kv"><span>Surface</span><b>${Sim.surfaceLabel(e)}</b></div>
       <div class="bar"><i style="width:${cond * 100}%;background:${cond > 0.7 ? '#2ecc40' : cond > 0.4 ? '#f1c40f' : '#e74c3c'}"></i></div>
-      <div class="kv"><span>Snowmaking</span><b>${e.snowmaking ? (e.smOn ? '💧 ON' : 'off') : 'none'}</b></div>
+      <div class="kv"><span>Snowmaking</span><b>${e.snowmaking ? (e.smOn ? '💧 ON' : 'off') + ' · ' + SNOWGUNS[(e.smTier || 1) - 1].short : 'none'}</b></div>
       ${e.deadEnd ? '<p class="err">⚠ This run dead-ends! Its bottom must reach a lift, the base, or merge into another run.</p>' : ''}
       ${!e.reachable ? '<p class="err">⚠ No lift serves the top of this run.</p>' : ''}
       </div>

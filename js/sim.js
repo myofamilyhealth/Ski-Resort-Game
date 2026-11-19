@@ -591,15 +591,18 @@ const Sim = {
     const pumps = World.sumStat('pumphouse', 'km');
     let smKm = 0, smCost = 0;
     const cold = Math.min(w.tLo, tomorrow ? tomorrow.tLo : w.tLo);
-    if (pumps > 0 && cold <= -3) {
+    if (pumps > 0 && cold <= -1) {
       const smF = U.clamp(World.staffFactor('snowmaker'), 0, 1);
-      for (const r of G.runs.filter(r => r.snowmaking && r.smOn && this.runDepth(r) < 110)) {
+      const list = G.runs.filter(r => r.snowmaking && r.smOn && this.runDepth(r) < (G.smTarget || 110)).sort((a, b) => this.runDepth(a) - this.runDepth(b));
+      for (const r of list) {
+        const gun = SNOWGUNS[(r.smTier || 1) - 1];
+        if (cold > gun.temp) continue;
         const km = r.len / 1000;
         if (smKm + km > pumps * smF + 0.001) continue;
         smKm += km;
-        const made = U.clamp((-cold - 1) * 1.6, 3, 16);
+        const made = U.clamp((gun.temp - cold + 2) * 1.6, 3, 16) * gun.out;
         r.smDepth += made;
-        smCost += km * 2400;
+        smCost += km * 2400 * gun.cost;
         for (const i of r.cells) { Terrain.groom[i] = Math.min(Terrain.groom[i], 0.3); Terrain.markSurf(i); }
       }
       if (smKm > 0) { World.spend(smCost, 'snowmaking'); World.log(`❄️ Snowmakers covered ${smKm.toFixed(1)} km of trail overnight (${U.money(smCost)}).`, 'info'); }
