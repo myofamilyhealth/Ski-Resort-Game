@@ -132,6 +132,7 @@ const World = {
     if (info.len < 120) return { ok: false, err: 'Run is too short (min 120 m).', info };
     if (info.vert < 10) return { ok: false, err: 'Runs must drop at least 10 m. Draw from top to bottom.', info };
     if (info.uphill > 8) return { ok: false, err: 'Part of this run goes uphill — skiers can\'t climb.', info };
+    if (info.cells.some(i => Terrain.water[i] === 2)) return { ok: false, err: 'Runs can\'t cross the pond.', info };
     const cost = this.runCost(info, width);
     return { ok: true, info, cost };
   },
@@ -225,8 +226,8 @@ const World = {
     const r = B.r;
     if (p.x < r || p.y < r || p.x > MAP_W * CELL - r || p.y > MAP_H * CELL - r) return { ok: false, err: 'Out of bounds.' };
     const cells = Terrain.cellsInCircle(p.x, p.y, r);
-    let maxS = 0; for (const i of cells) { maxS = Math.max(maxS, Terrain.slope[i]); if (Terrain.runMask[i]) return { ok: false, err: 'Can\'t build on a ski run.' }; }
-    const limit = (type === 'patrolhut' || type === 'restroom') ? 55 : type === 'restaurant' ? 40 : 30;
+    let maxS = 0; for (const i of cells) { maxS = Math.max(maxS, Terrain.slope[i]); if (Terrain.runMask[i]) return { ok: false, err: 'Can\'t build on a ski run.' }; if (Terrain.water[i] === 2) return { ok: false, err: 'Can\'t build on the pond.' }; }
+    const limit = (type === 'patrolhut' || type === 'restroom' || type === 'waffle') ? 55 : type === 'restaurant' ? 40 : type === 'tubing' ? 45 : 30;
     if (maxS > limit) return { ok: false, err: `Ground too steep (${Math.round(maxS)}%). Needs < ${limit}%.` };
     for (const o of G.buildings) if (U.dist(o, p) < BUILDINGS[o.kind].r + r + 4) return { ok: false, err: 'Overlaps another building.' };
     for (const l of G.lifts) if (U.segDist(p, l.bottom, l.top).d < r + 6) return { ok: false, err: 'Too close to a lift line.' };

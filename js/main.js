@@ -1,6 +1,6 @@
 // ---------- Save / load & main loop ----------
 const Save = {
-  key: 'powderline_save_v1',
+  key: 'powderline_save_v2',
   has() { try { return !!localStorage.getItem(this.key); } catch (e) { return false; } },
   save() {
     try {

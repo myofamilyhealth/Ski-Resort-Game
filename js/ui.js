@@ -9,6 +9,7 @@ const UI = {
     this.bindInput();
     $('#btnOpen').onclick = () => { const r = Sim.openSeason(); if (!r.ok) this.toast(r.err, 'bad'); this.refreshTop(); };
     document.querySelectorAll('[data-speed]').forEach(b => b.onclick = () => { G.speed = +b.dataset.speed; this.refreshTop(); });
+    $('#btnSeason').onclick = () => { if (G.phase === 'drive') return; this.confirm('Skip ahead to the end of this season? Days fly by with the crew grooming every night, then you\'ll see the season summary. You can stop at any time.', () => Sim.skipSeason()); };
     $('#btnSkip').onclick = () => { if (G.phase === 'day') { G.time = DAY_END; Sim.endDay(); } };
     document.querySelectorAll('[data-modal]').forEach(b => b.onclick = () => this.openModal(b.dataset.modal));
     document.querySelectorAll('[data-ov]').forEach(b => b.onclick = () => { Render.overlay = Render.overlay === b.dataset.ov ? 'none' : b.dataset.ov; this.refreshOverlayBtns(); });
@@ -41,7 +42,7 @@ const UI = {
     if (kind === 'select') { this.tool = null; }
     else this.tool = Object.assign({ kind, points: [], sub: null, width: 30, brush: 25 }, opts);
     if (kind === 'lift' && !this.tool.sub) this.tool.sub = 'double';
-    if (kind === 'building' && !this.tool.sub) this.tool.sub = 'ticket';
+    if (kind === 'building' && !this.tool.sub) this.tool.sub = 'lodge';
     if (kind === 'park' && !this.tool.sub) this.tool.sub = 'sjump';
     document.querySelectorAll('.tool').forEach(b => b.classList.toggle('on', b.dataset.tool === (this.tool ? this.tool.kind : 'select')));
     this.renderPanel();
@@ -321,14 +322,17 @@ const UI = {
         }
         h += `</div><button class="btn ghost" id="moreLifts">${this.showAllLifts ? 'Show fewer lifts' : 'Show all 13 lift types'}</button>`;
       } else if (t.kind === 'building') {
-        h += `<h3>🏠 Facilities</h3><p class="hint">Pick a building, then click flat ground (not on a run). Your base village is already built. Add these as you grow.</p><div class="list">`;
-        const BASICB = ['restaurant', 'pumphouse', 'school', 'bar', 'parking', 'lodge', 'patrolhut', 'kennel', 'hotel'];
-        for (const k in BUILDINGS) {
-          if (!this.showAllBld && !BASICB.includes(k) && t.sub !== k) continue;
+        const CATS = { village: ['🏘️ Village', ['lodge', 'parking', 'shuttle', 'rental', 'tune', 'school', 'daycare', 'retail', 'bar', 'plaza', 'rink', 'tubing', 'spa', 'hotel', 'condo', 'heli']],
+          mountain: ['⛰️ On the mountain', ['restaurant', 'waffle', 'restroom', 'patrolhut']],
+          ops: ['🔧 Operations', ['ticket', 'patrolhq', 'clinic', 'garage', 'pumphouse', 'kennel', 'housing']] };
+        const cat = this.bldCat || 'village';
+        h += `<h3>🏠 Build</h3><p class="hint">Pick a building, then click flat ground (not on a run or the pond). Village buildings go near the base.</p>
+        <div class="tabs">${Object.entries(CATS).map(([k, v]) => `<button class="tabb ${k === cat ? 'on' : ''}" data-bcat="${k}">${v[0]}</button>`).join('')}</div><div class="list">`;
+        for (const k of CATS[cat][1]) {
           const B = BUILDINGS[k]; const n = G.buildings.filter(b => b.kind === k).length;
           h += `<div class="item ${t.sub === k ? 'on' : ''}" data-bld="${k}"><div class="row"><b>${B.icon} ${B.name}</b><span>${U.money(B.levels[0].cost)}</span></div><small class="dim">${B.desc}${n ? ` · <b>Owned: ${n}</b>` : ''}</small></div>`;
         }
-        h += `</div><button class="btn ghost" id="moreBld">${this.showAllBld ? 'Show fewer' : 'Show all buildings'}</button>`;
+        h += `</div>`;
       } else if (t.kind === 'trees') {
         h += `<h3>🌲 Cut Trees</h3><p class="hint">Click & drag to log trees — widen trails, open glades, or clear building sites. ~$650 per dense cell.</p>
         <label>Brush radius: <b>${t.brush} m</b><input type="range" min="8" max="70" step="2" value="${t.brush}" id="brushR"></label>
@@ -357,7 +361,7 @@ const UI = {
     if (q('#brushR')) q('#brushR').oninput = (e) => { t.brush = +e.target.value; e.target.previousElementSibling.textContent = t.brush + ' m'; };
     if (q('#finishRun')) q('#finishRun').onclick = () => this.finishRun();
     if (q('#moreLifts')) q('#moreLifts').onclick = () => { this.showAllLifts = !this.showAllLifts; this.renderPanel(); };
-    if (q('#moreBld')) q('#moreBld').onclick = () => { this.showAllBld = !this.showAllBld; this.renderPanel(); };
+    p.querySelectorAll('[data-bcat]').forEach(e => e.onclick = () => { this.bldCat = e.dataset.bcat; this.renderPanel(); });
     if (q('#undoPt')) q('#undoPt').onclick = () => { t.points.pop(); this.renderPanel(); };
     p.querySelectorAll('[data-lift]').forEach(e => e.onclick = () => { t.sub = e.dataset.lift; t.points = []; this.renderPanel(); });
     p.querySelectorAll('[data-bld]').forEach(e => e.onclick = () => { t.sub = e.dataset.bld; this.renderPanel(); });
@@ -386,6 +390,7 @@ const UI = {
     h += `<h3>📋 Today</h3><div class="card">
       <div class="kv"><span>Base depth</span><b>${Math.round(G.baseDepth)} cm</b></div>
       <div class="kv"><span>Season snowfall</span><b>${Math.round(G.seasonSnow)} cm</b></div>
+      <div class="spark" data-modal="weather" title="Open the snow report">${this.snowChart(300, 110)}</div>
       <div class="kv"><span>Avalanche danger</span><b class="avy${G.avy.danger}">${['', 'Low', 'Moderate', 'Considerable', 'High', 'Extreme'][G.avy.danger]} (${G.avy.danger})</b></div>
       <div class="kv"><span>Weather</span><b>${Weather.icon(w)} ${Weather.label(w)} ${w.tHi}°/${w.tLo}°C</b></div>
       <div class="kv"><span>Wind / gusts</span><b>${w.wind} / ${w.gust} m/s</b></div>
@@ -442,7 +447,7 @@ const UI = {
       <div class="kv"><span>Level</span><b>${e.level} / ${B.levels.length}</b></div>
       ${e.buildDays > 0 ? `<div class="kv"><span>Construction</span><b>🏗 ${e.buildDays} days left</b></div>` : ''}
       <div class="kv"><span>Upkeep</span><b>${U.money(lv.upkeep)}/day</b></div>
-      ${Object.entries(lv).filter(([k]) => !['cost', 'days', 'upkeep'].includes(k)).map(([k, v]) => `<div class="kv"><span>${{ cap: 'Ticket capacity/day', seats: 'Seats', cars: 'Parking spaces', rentals: 'Rentals/day', students: 'Students/day', staff: 'Staff needed', resp: 'Response factor', bays: 'Vehicle bays', km: 'Snowmaking km', rooms: 'Hotel rooms', dogs: 'Dog capacity' }[k] || k}</span><b>${typeof v === 'number' ? v.toLocaleString() : v}</b></div>`).join('')}
+      ${Object.entries(lv).filter(([k]) => !['cost', 'days', 'upkeep'].includes(k)).map(([k, v]) => `<div class="kv"><span>${{ cap: 'Ticket capacity/day', seats: 'Seats', cars: 'Parking spaces', rentals: 'Rentals/day', students: 'Students/day', staff: 'Staff needed', resp: 'Response factor', bays: 'Vehicle bays', km: 'Snowmaking km', rooms: 'Rooms', dogs: 'Dog capacity', kids: 'Kids/day', riders: 'Bus riders/day', morale: 'Staff morale bonus' }[k] || k}</span><b>${typeof v === 'number' ? v.toLocaleString() : v}</b></div>`).join('')}
       </div>${next ? `<button class="btn primary" data-act="upgrade">⬆ Upgrade to L${e.level + 1} — ${U.money(next.cost)}</button>` : '<p class="hint">Fully upgraded.</p>'}`;
       if (e.kind === 'garage') h += `<button class="btn" data-modal="fleet">🚜 Open Fleet</button>`;
       if (e.kind === 'patrolhq' || e.kind === 'kennel') h += `<button class="btn" data-modal="patrol">⛑️ Patrol & Dogs</button>`;
@@ -486,7 +491,7 @@ const UI = {
     const d = U.el('div', { class: 'ln ' + type }, `<span>${Sim.clockStr()}</span> ${msg}`);
     el.prepend(d);
     while (el.children.length > 60) el.lastChild.remove();
-    if (type === 'bad' || type === 'good') this.toast(msg, type);
+    if ((type === 'bad' || type === 'good') && !G._skipping) this.toast(msg, type);
   },
   toast(msg, type = '') {
     const box = $('#toasts');
@@ -534,7 +539,7 @@ const UI = {
   breakdown(T) {
     let h = '<table class="tbl">';
     let tr = 0, te = 0;
-    const LBL = { tickets: '🎟️ Lift tickets', passes: '🎫 Season passes', rentals: '🎿 Rentals', lessons: '🧑‍🏫 Lessons', food: '🍔 Food & beverage', retail: '🛍️ Retail', bar: '🍻 Après bar', lodging: '🏨 Lodging', sightseeing: '🚠 Sightseeing', parking: '🅿️ Parking', salvage: '♻️ Salvage', construction: '🏗️ Construction', wages: '👷 Wages', lifts: '🚡 Lift power & maintenance', upkeep: '🏠 Building & fleet upkeep', insurance: '📄 Insurance', interest: '🏦 Loan interest', grooming: '🚜 Grooming fuel & wear', snowmaking: '💧 Snowmaking', marketing: '📣 Marketing', patrol: '⛑️ Patrol & avalanche control', vehicles: '🚜 Vehicle purchases' };
+    const LBL = { tickets: '🎟️ Lift tickets', passes: '🎫 Season passes', rentals: '🎿 Rentals', lessons: '🧑‍🏫 Lessons', food: '🍔 Food & beverage', retail: '🛍️ Retail', bar: '🍻 Après bar', lodging: '🏨 Lodging', sightseeing: '🚠 Sightseeing', parking: '🅿️ Parking', salvage: '♻️ Salvage', village: '🏘️ Village (spa, rink, tubing, daycare…)', construction: '🏗️ Construction', wages: '👷 Wages', lifts: '🚡 Lift power & maintenance', upkeep: '🏠 Building & fleet upkeep', insurance: '📄 Insurance', interest: '🏦 Loan interest', grooming: '🚜 Grooming fuel & wear', snowmaking: '💧 Snowmaking', marketing: '📣 Marketing', patrol: '⛑️ Patrol & avalanche control', vehicles: '🚜 Vehicle purchases' };
     for (const [k, v] of Object.entries(T.rev || {}).sort((a, b) => b[1] - a[1])) { if (v < 1) continue; h += `<tr><td>${LBL[k] || k}</td><td class="ok">+${U.money(v)}</td></tr>`; tr += v; }
     for (const [k, v] of Object.entries(T.exp || {}).sort((a, b) => b[1] - a[1])) { if (v < 1) continue; h += `<tr><td>${LBL[k] || k}</td><td class="bad">-${U.money(v)}</td></tr>`; te += v; }
     h += `<tr class="tot"><td>Net</td><td class="${tr - te >= 0 ? 'ok' : 'bad'}">${U.money(tr - te)}</td></tr></table>`;
@@ -717,8 +722,31 @@ const UI = {
   },
 
   // Weather
+  snowChart(w = 700, hgt = 190) {
+    let H = G.history.filter(d => d.season === G.seasonNum || d.season === undefined), note = '';
+    if (H.length < 3 && G.seasonNum > 1) { const P = G.history.filter(d => d.season === G.seasonNum - 1); if (P.length > 2) { H = P; note = `<p class="hint">Showing last season (Yr ${G.seasonNum - 1}) until this season has a few days of data.</p>`; } }
+    if (H.length < 2) return '<p class="hint">The snow depth chart fills in as days go by. Check back after a few days.</p>';
+    const pad = { l: 40, r: 40, t: 14, b: 26 }, iw = w - pad.l - pad.r, ih = hgt - pad.t - pad.b;
+    const maxD = Math.max(60, ...H.map(d => d.depth)) * 1.1, maxS = Math.max(20, ...H.map(d => d.snow)) * 1.15;
+    const x = (i) => pad.l + (H.length === 1 ? iw / 2 : i / (H.length - 1) * iw);
+    const yD = (v) => pad.t + ih - v / maxD * ih, yS = (v) => pad.t + ih - v / maxS * ih;
+    const bw = Math.max(2, iw / H.length * 0.6);
+    let s = `<svg viewBox="0 0 ${w} ${hgt}" class="chart" role="img" aria-label="Snow depth chart">`;
+    const step = maxD > 300 ? 100 : maxD > 120 ? 50 : 25;
+    for (let v = 0; v <= maxD; v += step) s += `<line x1="${pad.l}" x2="${w - pad.r}" y1="${yD(v)}" y2="${yD(v)}" stroke="#2a3b50" stroke-width="1"/><text x="${pad.l - 6}" y="${yD(v) + 4}" text-anchor="end" fill="#8fa3b8" font-size="10">${v}</text>`;
+    s += `<line x1="${pad.l}" x2="${w - pad.r}" y1="${yD(30)}" y2="${yD(30)}" stroke="#f5b700" stroke-dasharray="4 4"/><text x="${w - pad.r - 4}" y="${yD(30) - 4}" text-anchor="end" fill="#f5b700" font-size="10">30 cm needed to open</text>`;
+    H.forEach((d, i) => { if (d.snow > 0) s += `<rect x="${x(i) - bw / 2}" y="${yS(d.snow)}" width="${bw}" height="${pad.t + ih - yS(d.snow)}" fill="#7cc4ff" opacity="0.55"><title>${d.date}: ${d.snow} cm new snow</title></rect>`; });
+    const pts = H.map((d, i) => `${x(i)},${yD(d.depth)}`).join(' ');
+    s += `<polygon points="${pad.l},${pad.t + ih} ${pts} ${x(H.length - 1)},${pad.t + ih}" fill="#ffffff" opacity="0.10"/>`;
+    s += `<polyline points="${pts}" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linejoin="round"/>`;
+    const L = H[H.length - 1]; s += `<circle cx="${x(H.length - 1)}" cy="${yD(L.depth)}" r="4" fill="#fff"/><text x="${x(H.length - 1) - 6}" y="${yD(L.depth) - 8}" text-anchor="end" fill="#fff" font-size="11" font-weight="700">${L.depth} cm</text>`;
+    H.forEach((d, i) => { if (i % Math.ceil(H.length / 7) === 0) s += `<text x="${x(i)}" y="${hgt - 8}" text-anchor="middle" fill="#8fa3b8" font-size="10">${d.date.split(',')[0].slice(4)}</text>`; });
+    for (let v = 0; v <= maxS; v += maxS > 60 ? 20 : 10) s += `<text x="${w - pad.r + 6}" y="${yS(v) + 4}" fill="#7cc4ff" font-size="10">${v}</text>`;
+    s += `</svg>${note}<p class="legend"><span class="lw"></span> Base depth (cm, left)  <span class="lb"></span> New snow per day (cm, right)  <span class="ly"></span> Opening depth</p>`;
+    return s;
+  },
   m_weather() {
-    let h = this.head('🌨️ Weather & Snow Report') + `<p><b>Storm outlook:</b> ${Weather.stormOutlook()}</p><div class="fc">`;
+    let h = this.head('🌨️ Weather & Snow Report') + `<h4>❄️ Snow depth this season</h4>${this.snowChart()}<p><b>Storm outlook:</b> ${Weather.stormOutlook()}</p><div class="fc">`;
     G.wx.slice(0, 7).forEach((d, k) => {
       const dt = World.date(d.dayNum);
       h += `<div class="fday ${d.storm ? 'storm' : ''}"><b>${k === 0 ? 'Today' : DOW[dt.getUTCDay()]}</b><div class="fi">${Weather.icon(d)}</div><small>${Weather.label(d)}</small><div>${d.tHi}° / ${d.tLo}°</div><div>❄ ${Weather.forecastText(d, k)}</div><small>💨 ${k < 3 ? d.wind : '~' + Math.round(d.wind / 5) * 5} m/s</small></div>`;
@@ -814,6 +842,21 @@ const UI = {
   },
 
   showSeasonSummary(S) { this.openModal('season', S); },
+  m_skipping(d) {
+    return `<div class="mhead"><h2>⏩ Skipping to the end of the season…</h2></div>
+      <p>Your crew grooms every night, staff are handled automatically and the resort opens as soon as it can.</p>
+      <div class="bar big"><i id="skipBar" style="width:0%;background:#4fb3ff"></i></div>
+      <div class="grid3"><div class="stat"><small>Date</small><b id="skipDate">${World.dateStr()}</b></div><div class="stat"><small>Skier visits so far</small><b id="skipVis">0</b></div><div class="stat"><small>Cash</small><b id="skipCash">${U.money(G.cash)}</b></div></div>
+      <div class="btns center"><button class="btn" id="skipStop">⏹ Stop here</button></div>`;
+  },
+  b_skipping(box) { box.querySelector('#skipStop').onclick = () => { G._skipping = false; this.closeModal(); G.speed = 0; Save.save(); World.log('⏹ Stopped skipping. Game paused.'); }; },
+  updateSkip() {
+    const d = this.modalData || {}; if (this.modal !== 'skipping') return;
+    const end = Math.round((Date.UTC(2026 + G.seasonNum, 3, 20) - START_DATE) / 86400000), start = Math.round((Date.UTC(2026 + G.seasonNum - 1, 10, 3) - START_DATE) / 86400000);
+    const pct = U.clamp((G.dayNum - start) / (end - start) * 100, 0, 100);
+    const q = (s) => document.querySelector(s);
+    if (q('#skipBar')) { q('#skipBar').style.width = pct + '%'; q('#skipDate').textContent = World.dateStr(); q('#skipVis').textContent = (G.season.visitors - d.startVisits).toLocaleString(); q('#skipCash').textContent = U.money(G.cash); }
+  },
   m_season(S) {
     return `<div class="mhead"><h2>🏁 Season ${G.seasonNum} Complete!</h2></div>
     <div class="grid3"><div class="stat"><small>Skier visits</small><b>${S.visitors.toLocaleString()}</b></div><div class="stat"><small>Revenue</small><b class="ok">${U.money(S.revenue)}</b></div><div class="stat"><small>Profit</small><b class="${S.revenue - S.expense >= 0 ? 'ok' : 'bad'}">${U.money(S.revenue - S.expense)}</b></div></div>

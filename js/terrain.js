@@ -18,20 +18,22 @@ const Terrain = {
     this.runMask = new Uint16Array(N);  // number of runs covering cell
     this.dirtyTrees = new Set(); this.dirtySurf = new Set();
     const nz = new Noise(seed), nz2 = new Noise(seed + 77), nz3 = new Noise(seed + 991);
-    const VERT = 640;
+    const S = MAP_H * CELL / 1800; // size factor vs. the original 1.8 km map
+    const VERT = 640 * S;
     for (let y = 0; y < MAP_H; y++) {
       for (let x = 0; x < MAP_W; x++) {
         const nx = x / MAP_W, ny = y / MAP_H;
         let h = 1580 + VERT * Math.pow(1 - ny, 1.6);
         // ridges & gullies running down the fall line
-        const r = nz.ridge(nx * 3.2 + 3.1, ny * 1.1 + 1.7, 4);
+        const r = nz.ridge(nx * 3.2 * S + 3.1, ny * 1.1 * S + 1.7, 4);
         h += 62 * (r - 0.5) * Math.pow(1 - ny, 0.7);
-        h += 24 * (nz2.fbm(nx * 6, ny * 6, 3) - 0.5);
+        h += 24 * (nz2.fbm(nx * 6 * S, ny * 6 * S, 3) - 0.5);
+        h += 7 * (nz2.fbm(nx * 30 * S + 9, ny * 30 * S, 2) - 0.5); // knolls, rolls & benches
         // summit peaks
         const pk = (cx, cy, s, a) => a * Math.exp(-((nx - cx) ** 2 + (ny - cy) ** 2) / (2 * s * s));
-        h += pk(0.3, 0.04, 0.12, 110) + pk(0.74, 0.08, 0.11, 85) + pk(0.52, 0.0, 0.09, 50);
+        h += pk(0.3, 0.04, 0.12, 110 * S) + pk(0.74, 0.08, 0.11, 85 * S) + pk(0.52, 0.0, 0.09, 50 * S) + pk(0.12, 0.2, 0.08, 60 * S) + pk(0.9, 0.25, 0.07, 55 * S);
         // flatten the valley floor for the base area
-        if (ny > 0.86) { const t = (ny - 0.86) / 0.14; h = U.lerp(h, 1580 + 6 * (1 - t), Math.min(1, t * 0.9)); }
+        if (ny > 0.9) { const t = (ny - 0.9) / 0.1; h = U.lerp(h, 1580 + 6 * (1 - t), Math.min(1, t * 0.9)); }
         this.elev[this.idx(x, y)] = h;
       }
     }
@@ -49,6 +51,7 @@ const Terrain = {
     this.elev = e2;
     this.minE = Infinity; this.maxE = -Infinity;
     for (let i = 0; i < N; i++) { this.minE = Math.min(this.minE, this.elev[i]); this.maxE = Math.max(this.maxE, this.elev[i]); }
+    this.makeWater();
     this.treeLine = this.maxE - 260;
     this.computeSlope();
     for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
@@ -59,11 +62,55 @@ const Terrain = {
       d *= U.clamp((this.treeLine - h) / 70, 0, 1);
       if (this.slope[i] > 72) { this.rock[i] = 1; d *= 0.2; }
       if (ny > 0.9 && Math.abs(nx - 0.5) < 0.22) d *= 0.15; // base meadow
+      if (this.water[i]) d = 0;
+      else if (this.wet[i] > 0.15 && h < this.treeLine) d = Math.max(d, 0.55); // trees line the creeks
       this.trees[i] = d < 0.12 ? 0 : d;
       this.groom[i] = 0.35; this.gdir[i] = 0; this.powder[i] = 0;
     }
   },
 
+  // Frozen creeks (flow accumulation) and a pond near the base
+  makeWater() {
+    const N = this.N, E = this.elev;
+    this.water = new Uint8Array(N); // 1 = creek, 2 = pond
+    const lk = { x: Math.round(MAP_W * 0.22), y: Math.round(MAP_H * 0.93), r: Math.round(MAP_W * 0.03) };
+    let lv = Infinity;
+    for (let y = lk.y - lk.r; y <= lk.y + lk.r; y++) for (let x = lk.x - lk.r; x <= lk.x + lk.r; x++) if (Math.hypot(x - lk.x, (y - lk.y) * 1.4) <= lk.r) lv = Math.min(lv, this.e(x, y));
+    lv -= 1.5;
+    for (let y = lk.y - lk.r * 2; y <= lk.y + lk.r * 2; y++) for (let x = lk.x - lk.r * 2; x <= lk.x + lk.r * 2; x++) {
+      if (x < 0 || y < 0 || x >= MAP_W || y >= MAP_H) continue;
+      const d = Math.hypot(x - lk.x, (y - lk.y) * 1.4) / lk.r, i = y * MAP_W + x;
+      if (d <= 1) { E[i] = lv; this.water[i] = 2; } else if (d < 2) E[i] = U.lerp(lv + 1, E[i], (d - 1));
+    }
+    this.lake = { x: (lk.x + 0.5) * CELL, y: (lk.y + 0.5) * CELL, r: lk.r * CELL };
+    const order = Array.from({ length: N }, (_, i) => i).sort((a, b) => E[b] - E[a]);
+    const acc = new Float32Array(N).fill(1);
+    for (const i of order) {
+      const x = i % MAP_W, y = (i / MAP_W) | 0;
+      let best = -1, be = E[i];
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const xx = x + dx, yy = y + dy; if ((!dx && !dy) || xx < 0 || yy < 0 || xx >= MAP_W || yy >= MAP_H) continue;
+        const j = yy * MAP_W + xx; if (E[j] < be) { be = E[j]; best = j; }
+      }
+      if (best >= 0) acc[best] += acc[i];
+    }
+    for (let i = 0; i < N; i++) {
+      const y = (i / MAP_W) | 0;
+      if (acc[i] > 420 && y > MAP_H * 0.1 && !this.water[i]) { this.water[i] = 1; E[i] -= Math.min(4, Math.log(acc[i]) * 0.5); }
+    }
+    // smooth wetness field for nice-looking curves when drawing
+    this.wet = new Float32Array(N);
+    for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
+      let s = 0, c = 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= MAP_W || yy >= MAP_H) continue; s += this.water[yy * MAP_W + xx] ? 1 : 0; c++; }
+      this.wet[y * MAP_W + x] = s / c;
+    }
+  },
+  wetAt(mx, my) {
+    const fx = U.clamp(mx / CELL - 0.5, 0, MAP_W - 1.001), fy = U.clamp(my / CELL - 0.5, 0, MAP_H - 1.001);
+    const x = Math.floor(fx), y = Math.floor(fy), tx = fx - x, ty = fy - y, W = this.wet, i = y * MAP_W + x;
+    return U.lerp(U.lerp(W[i], W[i + 1], tx), U.lerp(W[i + MAP_W], W[i + MAP_W + 1], tx), ty);
+  },
   computeSlope() {
     for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
       const i = this.idx(x, y);
@@ -124,7 +171,21 @@ const Terrain = {
           const n = ((Math.sin(mx * 0.9 + my * 0.37) + Math.sin(mx * 0.23 - my * 1.1)) * 0.25 + 0.5);
           r = U.lerp(r, U.lerp(72, 150, s) + n * 20, rk * 0.9); g = U.lerp(g, U.lerp(70, 146, s) + n * 18, rk * 0.9); b = U.lerp(b, U.lerp(78, 150, s) + n * 16, rk * 0.9);
         }
-        // valley floor slightly warmer
+        // sun-warmed vs. shaded snow, sparkle texture, alpine brightness
+        const hsh = Math.sin(px * 12.9898 + py * 78.233) * 43758.5453; const grain = (hsh - Math.floor(hsh) - 0.5) * 7;
+        const warm = (s - 0.6) * 14;
+        r += grain + warm; g += grain + warm * 0.6; b += grain - warm * 0.4;
+        if (hc > this.maxE - 260) { const a = U.clamp((hc - (this.maxE - 260)) / 200, 0, 1) * 8; r += a; g += a; b += a; }
+        // frozen creeks & the pond
+        const wv = this.wetAt(mx, my);
+        if (this.lake && Math.hypot((mx - this.lake.x), (my - this.lake.y) * 1.4) < this.lake.r) {
+          const crack = Math.abs(Math.sin(mx * 0.35 + Math.sin(my * 0.21) * 3)) < 0.06 ? 25 : 0;
+          r = 168 + grain - crack; g = 198 + grain - crack; b = 226 + grain - crack * 0.5;
+        } else if (wv > 0.16) {
+          const k = U.clamp((wv - 0.16) * 4, 0, 0.85);
+          r = U.lerp(r, 120, k); g = U.lerp(g, 160, k); b = U.lerp(b, 200, k);
+          if (wv > 0.3 && Math.sin(mx * 1.7 + my * 0.9) > 0.6) { r += 18; g += 18; b += 14; } // ice glints
+        }
         // contours
         const c25 = Math.floor(hc / 25), c100 = Math.floor(hc / 100);
         const hR = this.heightAt(mx + CELL / PX, my), hD = this.heightAt(mx, my + CELL / PX);
@@ -135,6 +196,16 @@ const Terrain = {
       }
     }
     ctx.putImageData(img, 0, 0);
+    // elevation labels on the 100 m contours
+    ctx.font = '600 9px system-ui, sans-serif'; ctx.fillStyle = 'rgba(60,75,105,0.75)'; ctx.textAlign = 'center';
+    for (let y = 8; y < MAP_H - 4; y += 22) {
+      let lastX = -99;
+      for (let x = 1; x < MAP_W - 1; x++) {
+        const a = Math.floor(this.e(x, y) / 100), bb = Math.floor(this.e(x + 1, y) / 100);
+        if (a !== bb && x - lastX > 40 && !this.water[y * MAP_W + x]) { ctx.fillText(Math.max(a, bb) * 100 + ' m', (x + 1) * PX, y * PX + 3); lastX = x; }
+      }
+    }
+    ctx.textAlign = 'left';
   },
   renderSlope() {
     const ctx = this.cSlope.getContext('2d');
@@ -152,15 +223,30 @@ const Terrain = {
   },
   drawTreesOfCell(ctx, x, y) {
     const i = this.idx(x, y); const d = this.trees[i];
-    if (d <= 0) return;
     const r = U.seeded(i * 2654435761);
+    const hh = this.elev[i];
+    // boulders on cliffs and above treeline
+    if (this.rock[i] || (hh > this.treeLine && r() < 0.06)) {
+      const bx = (x + r()) * PX, by = (y + r()) * PX, bs = 1.2 + r() * 1.6;
+      ctx.fillStyle = 'rgba(30,35,50,0.3)'; ctx.beginPath(); ctx.ellipse(bx + 0.8, by + 0.6, bs * 1.2, bs * 0.8, 0, 0, 7); ctx.fill();
+      ctx.fillStyle = '#6d6f78'; ctx.beginPath(); ctx.moveTo(bx - bs, by + bs * 0.5); ctx.lineTo(bx - bs * 0.4, by - bs); ctx.lineTo(bx + bs, by - bs * 0.3); ctx.lineTo(bx + bs * 0.8, by + bs * 0.6); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.moveTo(bx - bs * 0.6, by - bs * 0.2); ctx.lineTo(bx - bs * 0.4, by - bs); ctx.lineTo(bx + bs * 0.6, by - bs * 0.4); ctx.closePath(); ctx.fill();
+    }
+    if (d <= 0) return;
+    const low = hh < this.minE + 320, high = hh > this.treeLine - 90;
     const n = Math.ceil(d * 2.6);
     for (let k = 0; k < n; k++) {
       const tx = (x + r()) * PX, ty = (y + r()) * PX, sz = 1.6 + r() * 1.9 * (0.6 + d * 0.5);
       ctx.fillStyle = 'rgba(30,40,60,0.25)';
       ctx.beginPath(); ctx.ellipse(tx + sz * 0.7, ty + sz * 0.6, sz, sz * 0.7, 0, 0, 7); ctx.fill();
-      ctx.fillStyle = r() < 0.5 ? '#1f4d2b' : '#23592f';
-      ctx.beginPath(); ctx.arc(tx, ty, sz, 0, 7); ctx.fill();
+      if (low && r() < 0.3) { // bare aspens & birches
+        ctx.fillStyle = r() < 0.5 ? '#8a8174' : '#9b9284';
+        ctx.beginPath(); ctx.arc(tx, ty, sz * 0.85, 0, 7); ctx.fill();
+        ctx.strokeStyle = 'rgba(70,60,50,0.6)'; ctx.lineWidth = 0.4; ctx.beginPath(); ctx.moveTo(tx - sz * 0.6, ty); ctx.lineTo(tx + sz * 0.6, ty); ctx.moveTo(tx, ty - sz * 0.6); ctx.lineTo(tx, ty + sz * 0.6); ctx.stroke();
+        continue;
+      }
+      ctx.fillStyle = high ? (r() < 0.5 ? '#2c5a3a' : '#355f40') : r() < 0.33 ? '#1f4d2b' : r() < 0.5 ? '#23592f' : '#1a4426';
+      ctx.beginPath(); ctx.arc(tx, ty, high ? sz * 0.75 : sz, 0, 7); ctx.fill();
       ctx.fillStyle = 'rgba(255,255,255,0.55)';
       ctx.beginPath(); ctx.arc(tx - sz * 0.3, ty - sz * 0.35, sz * 0.4, 0, 7); ctx.fill();
     }

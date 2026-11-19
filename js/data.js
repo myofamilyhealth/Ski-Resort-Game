@@ -1,9 +1,9 @@
 // ---------- Game catalogs & constants ----------
 // All manufacturer/model names are fictional.
 const CELL = 12;          // meters per terrain cell
-const MAP_W = 200;        // cells
-const MAP_H = 150;        // cells
-const PX = 6;             // buffer pixels per cell
+const MAP_W = 320;        // cells (3.8 km)
+const MAP_H = 240;        // cells (2.9 km)
+const PX = 5;             // buffer pixels per cell
 
 const DIFF = {
   green:  { key: 'green',  name: 'Easiest',        color: '#2ecc40', max: 25,  icon: '●', short: 'Green' },
@@ -85,6 +85,39 @@ const BUILDINGS = {
   restroom: { name: 'Warming Hut & Restrooms', icon: '🚻', color: '#95a5a6', r: 7, levels: [
               { cost: 90000, days: 1, upkeep: 30 }],
               desc: 'Small on-mountain comfort station.' },
+  condo:    { name: 'Village Condos', icon: '🏘️', color: '#6c5ce7', r: 20, levels: [
+              { cost: 2600000, days: 6, upkeep: 500, rooms: 40 }, { cost: 3200000, days: 6, upkeep: 900, rooms: 100 }, { cost: 5000000, days: 8, upkeep: 1400, rooms: 200 }],
+              desc: 'Slopeside condos ($210/night). Overnight guests ski every day.' },
+  housing:  { name: 'Staff Housing', icon: '🏠', color: '#a1887f', r: 16, levels: [
+              { cost: 900000, days: 4, upkeep: 250, morale: 6 }, { cost: 900000, days: 4, upkeep: 380, morale: 12 }],
+              desc: 'Affordable beds for your crew. Raises staff morale.' },
+  daycare:  { name: 'Kids Club & Daycare', icon: '🧸', color: '#ff9ff3', r: 10, levels: [
+              { cost: 350000, days: 2, upkeep: 120, kids: 60 }, { cost: 400000, days: 3, upkeep: 180, kids: 140 }],
+              desc: 'Parents ski while kids play ($125/day). Families love it.' },
+  rink:     { name: 'Ice Skating Rink', icon: '⛸️', color: '#74b9ff', r: 13, levels: [
+              { cost: 450000, days: 3, upkeep: 140 }, { cost: 350000, days: 2, upkeep: 200 }],
+              desc: 'Evening fun for everyone ($18 skate rental).' },
+  spa:      { name: 'Spa & Hot Pools', icon: '♨️', color: '#00b894', r: 14, levels: [
+              { cost: 1400000, days: 5, upkeep: 380 }, { cost: 1200000, days: 4, upkeep: 520 }],
+              desc: 'Soak after skiing ($95). Big boost to guest happiness.' },
+  tubing:   { name: 'Tubing Hill', icon: '🛟', color: '#fdcb6e', r: 16, levels: [
+              { cost: 300000, days: 2, upkeep: 110 }, { cost: 250000, days: 2, upkeep: 150 }],
+              desc: 'Snow tubing lanes with a tow ($35). Great for non-skiers.' },
+  shuttle:  { name: 'Shuttle Bus Stop', icon: '🚌', color: '#e17055', r: 9, levels: [
+              { cost: 180000, days: 1, upkeep: 260, riders: 500 }, { cost: 220000, days: 1, upkeep: 400, riders: 1200 }],
+              desc: 'Free buses from town. Brings guests without needing parking.' },
+  tune:     { name: 'Ski Tuning Shop', icon: '🛠️', color: '#636e72', r: 8, levels: [
+              { cost: 160000, days: 1, upkeep: 60 }],
+              desc: 'Waxing & edge tuning ($40).' },
+  plaza:    { name: 'Village Plaza & Fire Pits', icon: '🔥', color: '#d63031', r: 15, levels: [
+              { cost: 250000, days: 2, upkeep: 70 }, { cost: 350000, days: 2, upkeep: 110 }],
+              desc: 'A cozy heart for the village. Small happiness boost, bigger with events.' },
+  waffle:   { name: 'Waffle & Coffee Hut', icon: '🧇', color: '#e1b12c', r: 7, levels: [
+              { cost: 180000, days: 1, upkeep: 60, seats: 40 }],
+              desc: 'Tiny on-mountain snack shack. Adds seats & happiness.' },
+  heli:     { name: 'Heli-Ski Base', icon: '🚁', color: '#2d3436', r: 12, levels: [
+              { cost: 2500000, days: 5, upkeep: 900 }],
+              desc: 'Expert guests pay $1,100 for a day of backcountry powder.' },
   kennel:   { name: 'Avalanche Dog Kennel', icon: '🐕', color: '#b9770e', r: 8, levels: [
               { cost: 150000, days: 2, upkeep: 50, dogs: 2 }, { cost: 120000, days: 2, upkeep: 70, dogs: 4 }, { cost: 180000, days: 2, upkeep: 90, dogs: 8 }],
               desc: 'Home for avalanche rescue dogs. Required before adopting dogs.' },

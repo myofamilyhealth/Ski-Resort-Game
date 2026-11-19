@@ -155,7 +155,7 @@ const Sim = {
     const liftCap = openLifts.reduce((a, l) => a + LIFTS[l.kind].cap * (1 - l.holdFrac), 0) * 0.65;
     if (buyers + pass > liftCap) { const f = liftCap / (buyers + pass); buyers *= f; pass *= f; }
     // hotel guests
-    const rooms = World.sumStat('hotel', 'rooms');
+    const rooms = World.sumStat('hotel', 'rooms') + World.sumStat('condo', 'rooms');
     const occ = rooms ? U.clamp((buyers + pass) / (rooms * 9), 0.25, 1) : 0;
     const hotelGuests = Math.round(rooms * occ * 2.1);
     T.occupancy = occ; T.rooms = rooms;
@@ -163,7 +163,7 @@ const Sim = {
     const ticketCap = World.sumStat('ticket', 'cap') * U.clamp(World.staffFactor('guest'), 0.3, 1);
     let turned = 0;
     if (buyers > ticketCap) { turned += buyers - ticketCap; buyers = ticketCap; }
-    const parkCap = World.sumStat('parking', 'cars') * 2.4;
+    const parkCap = World.sumStat('parking', 'cars') * 2.4 + World.sumStat('shuttle', 'riders');
     const driving = buyers + pass;
     if (driving > parkCap) {
       const over = driving - parkCap; const f = parkCap / driving;
@@ -415,11 +415,11 @@ const Sim = {
     if (operating) this.satisfaction(T, w);
     T.net = Object.values(T.rev).reduce((a, b) => a + b, 0) - Object.values(T.exp).reduce((a, b) => a + b, 0);
     G.season.visitors += T.visitors;
-    G.history.push({ day: G.dayNum, date: World.dateStr(), visitors: T.visitors, rev: Object.values(T.rev).reduce((a, b) => a + b, 0), exp: Object.values(T.exp).reduce((a, b) => a + b, 0), sat: T.sat || 0, wait: T.avgWait || 0, snow: w.snowNight + w.snowDay, depth: Math.round(G.baseDepth), cash: G.cash });
+    G.history.push({ season: G.seasonNum, day: G.dayNum, date: World.dateStr(), visitors: T.visitors, rev: Object.values(T.rev).reduce((a, b) => a + b, 0), exp: Object.values(T.exp).reduce((a, b) => a + b, 0), sat: T.sat || 0, wait: T.avgWait || 0, snow: w.snowNight + w.snowDay, depth: Math.round(G.baseDepth), cash: G.cash });
     if (G.history.length > 400) G.history.shift();
     // marketing & awareness
     this.updateMarketing(T);
-    if (!operating && !G.showClosedReports) { Sim.runNight(null); return; }
+    if (G._skipping || (!operating && !G.showClosedReports)) { Sim.runNight(null); return; }
     if (operating && G.autoGroom) {
       World.log(`🌆 Day done: ${T.visitors.toLocaleString()} guests, ${T.sat}% happy, net ${U.money(T.net)}. 🚜 Crew is grooming overnight (auto).`, T.net >= 0 ? 'good' : 'warn');
       Sim.runNight(null);
@@ -435,13 +435,23 @@ const Sim = {
     World.earn(rentals * 59, 'rentals');
     const stud = Math.min(World.sumStat('school', 'students'), G.staff.instructor * 6, v * 0.13);
     T.students = Math.round(stud); World.earn(stud * 165, 'lessons');
-    const seats = World.sumStat('lodge', 'seats') + World.sumStat('restaurant', 'seats');
+    const seats = World.sumStat('lodge', 'seats') + World.sumStat('restaurant', 'seats') + World.sumStat('waffle', 'seats');
     const meals = Math.min(v * 0.85, seats * 3.2 * U.clamp(World.staffFactor('food'), 0.3, 1));
     T.meals = Math.round(meals); T.foodShort = Math.max(0, v * 0.85 - meals);
     World.earn(meals * 21, 'food');
     if (World.built('retail').length) World.earn(v * (4 + 3 * World.built('retail').reduce((a, b) => a + b.level, 0)), 'retail');
     if (World.built('bar').length) World.earn(Math.min(v * 0.3, 350 * World.built('bar').reduce((a, b) => a + b.level, 0)) * 16, 'bar');
-    if (T.rooms) World.earn(T.rooms * T.occupancy * 260, 'lodging');
+    if (T.rooms) World.earn(T.rooms * T.occupancy * 245, 'lodging');
+    // village extras
+    const lv = (k) => World.built(k).reduce((a, b) => a + b.level, 0);
+    let village = 0;
+    if (lv('daycare')) village += Math.min(World.sumStat('daycare', 'kids'), v * 0.03) * 125;
+    if (lv('rink')) village += v * 0.08 * (0.8 + 0.2 * lv('rink')) * 18;
+    if (lv('spa')) village += Math.min(v * 0.07, 220 * lv('spa')) * 95;
+    if (lv('tubing')) village += Math.min(v * 0.06, 250 * lv('tubing')) * 35;
+    if (lv('tune')) village += v * 0.04 * 40;
+    if (lv('heli') && Weather.today().wind < 14) village += Math.min(v * 0.004, 24) * 1100;
+    if (village) World.earn(village, 'village');
     const sight = G.lifts.filter(l => LIFTS[l.kind].sightseeing && this.liftIsOpen(l)).length;
     if (sight) World.earn(Math.round(v * 0.04 * sight) * 39, 'sightseeing');
     T.avgWait = T.waitSamples ? T.waitSum / T.waitSamples : 0;
@@ -494,7 +504,7 @@ const Sim = {
     const rest = Math.min(1, 0.7 + World.built('restroom').length * 0.1 + World.built('restaurant').length * 0.15);
     const rentOk = T.rentalShort > 1 ? U.clamp(1 - T.rentalShort / (T.visitors * 0.24), 0.2, 1) : 1;
     const parkOk = T.turned > 0 ? U.clamp(1 - T.turned / (T.visitors + T.turned), 0.3, 1) : 1;
-    const extra = (World.built('bar').length ? 5 : 0) + (World.built('hotel').length ? 4 : 0) + (World.built('retail').length ? 2 : 0);
+    const extra = (World.built('bar').length ? 5 : 0) + (World.built('hotel').length || World.built('condo').length ? 4 : 0) + (World.built('retail').length ? 2 : 0) + (World.built('spa').length ? 5 : 0) + (World.built('daycare').length ? 3 : 0) + (World.built('rink').length ? 2 : 0) + (World.built('tubing').length ? 2 : 0) + (World.built('plaza').length ? 3 : 0) + (World.built('waffle').length ? 2 : 0);
     S.facilities = U.clamp((seatsOk * 0.35 + lodge * 0.25 + rest * 0.15 + rentOk * 0.15 + parkOk * 0.1) * 95 + extra, 0, 100);
     const pi = this.patrolInfo();
     S.safety = U.clamp(40 + pi.coverage * 45 + (pi.resp < 10 ? 15 : pi.resp < 20 ? 5 : -10) - T.incidents.filter(i => i.level >= 2).length * 2 + G.dogs.length * 2 - (T.avalanche ? T.avalanche.lost * 40 : 0), 0, 100);
@@ -623,7 +633,7 @@ const Sim = {
     const needs = World.staffNeeds(); let over = 0, n = 0;
     for (const k in needs) if (needs[k]) { over += Math.max(0, 1 - G.staff[k] / needs[k]); n++; }
     over = n ? over / n : 0;
-    const target = 70 + (G.payRate - 1) * 130 - over * 40;
+    const target = 70 + (G.payRate - 1) * 130 - over * 40 + World.sumStat('housing', 'morale');
     G.morale = U.clamp(G.morale + (target - G.morale) * 0.15, 0, 100);
     // recent snow memory for avalanche model
     G.recentSnow = (G.recentSnow || []).concat([w.snowNight + w.snowDay]).slice(-3);
@@ -648,9 +658,29 @@ const Sim = {
       return;
     }
     this.startDay();
-    Save.save();
+    if (!G._skipping) Save.save();
   },
 
+  // Fast-forward to the end of the season (crew grooms every night, no reports)
+  skipSeason() {
+    if (G.phase === 'drive') return;
+    G._skipping = true;
+    const startVisits = G.season.visitors, startCash = G.cash;
+    UI.openModal('skipping', { startVisits, startCash });
+    const step = () => {
+      if (!G._skipping) return;
+      for (let k = 0; k < 3 && G._skipping; k++) {
+        if (G.phase === 'dusk' && UI.modal !== 'season') { G.phase = 'day'; this.runNight(null); }
+        if (!G.seasonOpen && World.inSeasonWindow()) this.openSeason();
+        const d0 = G.dayNum; let guard = 0;
+        while (G.dayNum === d0 && G.phase === 'day' && guard++ < 400) this.tickDay(5);
+        if (UI.modal === 'season') { G._skipping = false; Save.save(); return; }
+      }
+      UI.updateSkip();
+      setTimeout(step, 0);
+    };
+    setTimeout(step, 30);
+  },
   openSeason() {
     if (G.seasonOpen) return { ok: false, err: 'Already open.' };
     if (!World.inSeasonWindow()) return { ok: false, err: 'The season opens in November.' };
