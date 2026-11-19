@@ -12,11 +12,10 @@
   <div class="stat"><small>Cash</small><b id="cash">$0</b></div>
   <div class="stat"><small id="date">—</small><b id="clock">—</b></div>
   <div class="stat" title="Weather"><small>Weather</small><b id="wx">—</b></div>
-  <div class="stat" title="Mid-mountain base depth"><small>Base</small><b id="depth">—</b></div>
+  <div class="stat" title="Mid-mountain base depth"><small>Snow</small><b id="depth">—</b></div>
   <div class="stat" title="On the hill now / visitors today"><small>Guests</small><b id="guests">—</b></div>
-  <div class="stat" title="Average lift line"><small>Lines</small><b id="wait">—</b></div>
-  <div class="stat" title="Reputation (0-100)"><small>Rep</small><b id="rep">—</b></div>
-  <div class="stat" title="Awareness (0-100)"><small>Aware</small><b id="aw">—</b></div>
+  <div class="stat" title="How much guests enjoyed their last day"><small>Happiness</small><b id="happy">—</b></div>
+  <div class="stat" title="Reputation (0-100): goes up when guests are happy"><small>Reputation</small><b id="rep">—</b></div>
   <div class="speed">
     <button data-speed="0" title="Pause (Space)">⏸</button>
     <button data-speed="1" title="Normal (1)">▶</button>
@@ -27,15 +26,15 @@
   </div>
   <button id="btnOpen" class="btn open">🎿 Open for Season</button>
   <nav class="mgmt">
-    <button data-modal="finance" title="Finances">📊</button>
-    <button data-modal="staff" title="Staff">👷</button>
-    <button data-modal="fleet" title="Groomers & Snowmobiles">🚜</button>
-    <button data-modal="patrol" title="Ski Patrol & Dogs">⛑️</button>
-    <button data-modal="marketing" title="Marketing & Events">📣</button>
-    <button data-modal="pricing" title="Pricing">💲</button>
-    <button data-modal="weather" title="Weather & Snow Report">🌨️</button>
-    <button data-modal="guests" title="Guest Satisfaction">😀</button>
-    <button data-modal="help" title="How to play">❓</button>
+    <button data-modal="finance" title="Finances">📊<span>Money</span></button>
+    <button data-modal="staff" title="Staff">👷<span>Staff</span></button>
+    <button data-modal="fleet" title="Groomers & Snowmobiles">🚜<span>Fleet</span></button>
+    <button data-modal="patrol" title="Ski Patrol & Dogs">⛑️<span>Patrol</span></button>
+    <button data-modal="marketing" title="Marketing & Events">📣<span>Ads</span></button>
+    <button data-modal="pricing" title="Pricing">💲<span>Prices</span></button>
+    <button data-modal="weather" title="Weather & Snow Report">🌨️<span>Weather</span></button>
+    <button data-modal="guests" title="Guest Satisfaction">😀<span>Guests</span></button>
+    <button data-modal="help" title="How to play">❓<span>Help</span></button>
   </nav>
 </header>
 <main>
@@ -60,6 +59,7 @@
   <aside id="panel"></aside>
 </main>
 <footer id="log"></footer>
+<div id="coach"></div>
 <div id="modal"><div id="modalBox"></div></div>
 
 <script src="js/util.js"></script>
@@ -72,6 +72,7 @@
 <script src="js/agents.js"></script>
 <script src="js/render.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/tutorial.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

@@ -1,12 +1,12 @@
 // ---------- Game state, entities, placement & network ----------
-const START_DATE = Date.UTC(2026, 9, 20); // Oct 20
+const START_DATE = Date.UTC(2026, 10, 3); // Nov 3
 let G = null;
 
 const World = {
   newGame(seed) {
     G = {
       version: 1, seed,
-      cash: 10000000, loan: 0,
+      cash: 8000000, loan: 0, autoStaff: true, tut: { step: 0, on: true },
       dayNum: 0, time: 7 * 60 + 30, phase: 'day', speed: 1,
       seasonOpen: false, seasonNum: 1, closedForSeason: false,
       runs: [], lifts: [], buildings: [], groomers: [], sleds: [], dogs: [],
@@ -26,9 +26,35 @@ const World = {
     Terrain.generate(seed);
     Weather.ensure();
     G.basePoint = { x: MAP_W * CELL * 0.5, y: MAP_H * CELL * 0.955 };
+    G.baseDepth = 45; G.seasonSnow = 70;
+    this.buildStarterVillage();
     Sim.startDay(true);
   },
 
+  // Free starter base area so new players can go straight to lifts & runs
+  buildStarterVillage() {
+    const b = G.basePoint;
+    const plan = [['ticket', -70, -10], ['lodge', 40, -10], ['parking', -175, 0], ['rental', -70, 32], ['patrolhq', 110, 25], ['garage', 195, 0]];
+    for (const [kind, dx, dy] of plan) {
+      let placed = false;
+      for (let tries = 0; tries < 40 && !placed; tries++) {
+        const p = { x: b.x + dx + (tries ? (Math.random() - 0.5) * 60 : 0), y: b.y + dy + (tries ? (Math.random() - 0.5) * 40 : 0) };
+        const v = this.validateBuilding(kind, p);
+        if (!v.ok) continue;
+        Terrain.clearTrees(v.cells);
+        G.buildings.push({ id: U.uid(), type: 'building', kind, x: p.x, y: p.y, level: 1, buildDays: 0, status: 'open' });
+        placed = true;
+      }
+    }
+    G.groomers.push({ id: U.uid(), kind: 'std', name: 'Cat 1', hours: 0, condition: 1 });
+    G.sleds.push({ id: U.uid(), kind: 'patrol' });
+    this.rebuildNetwork();
+    this.autoStaff();
+  },
+  autoStaff() {
+    if (!G.autoStaff) return;
+    const n = this.staffNeeds(); for (const k in n) G.staff[k] = n[k];
+  },
   date(d = G.dayNum) { return new Date(START_DATE + d * 86400000); },
   dateStr(d = G.dayNum) {
     const dt = this.date(d);
@@ -36,7 +62,7 @@ const World = {
   },
   inSeasonWindow(d = G.dayNum) {
     const dt = this.date(d); const m = dt.getUTCMonth(), dd = dt.getUTCDate();
-    if (m === 10) return dd >= 10; // Nov 10+
+    if (m === 10) return dd >= 1; // Nov 1+
     if (m === 11 || m === 0 || m === 1 || m === 2) return true;
     if (m === 3) return dd <= 19;
     return false;

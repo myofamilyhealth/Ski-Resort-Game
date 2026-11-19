@@ -72,7 +72,7 @@ const Drive = {
     this.cells = 0; this.msg = ''; this.msgT = 0; this.keys = {};
     this.trail = [];
     this.active = true;
-    G.phase = 'drive'; G.time = 18 * 60;
+    G.phase = 'drive'; G.time = 18 * 60; G._droveOnce = true;
     this.snow = [];
     Render.cam.zoom = 2.4; Render.cam.x = this.x; Render.cam.y = this.y; this.miniT = 0;
     UI.enterDrive();

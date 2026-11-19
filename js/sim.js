@@ -55,6 +55,7 @@ const Sim = {
   // ---------- Day start ----------
   startDay(first = false) {
     G.phase = 'day'; G.time = DAY_START;
+    World.autoStaff();
     const w = Weather.today();
     const dt = World.date();
     G.today = { dayNum: G.dayNum, rev: {}, exp: {}, visitors: 0, arrived: 0, ticketBuyers: 0, pass: 0, turned: 0, incidents: [], wait: 0, events: [] };
@@ -150,6 +151,9 @@ const Sim = {
     for (const ev of G.events) if (ev.day === G.dayNum) mkt += EVENTS[ev.key].visitors;
     let buyers = market * appeal * repF * snowF * wxF * dow * hol * priceF * mkt * (0.9 + Math.random() * 0.2) * 0.55;
     let pass = G.passHolders * 0.085 * dow * snowF * Math.min(1.3, wxF + 0.1);
+    // guests won't come if the lifts are obviously overloaded (keeps lines reasonable for small resorts)
+    const liftCap = openLifts.reduce((a, l) => a + LIFTS[l.kind].cap * (1 - l.holdFrac), 0) * 0.65;
+    if (buyers + pass > liftCap) { const f = liftCap / (buyers + pass); buyers *= f; pass *= f; }
     // hotel guests
     const rooms = World.sumStat('hotel', 'rooms');
     const occ = rooms ? U.clamp((buyers + pass) / (rooms * 9), 0.25, 1) : 0;
@@ -210,8 +214,8 @@ const Sim = {
       const cap = T.cap * staffF * (1 - l.holdFrac);
       const rho = cap > 0 ? demand / cap : 3;
       l.util = Math.min(rho, 3);
-      let wait = rho <= 0.6 ? 1 + rho * 2.5 : 2.5 + 55 * Math.pow(rho - 0.6, 1.6);
-      l.wait = U.clamp(U.lerp(l.wait || 0, wait, 0.3), 0, 75);
+      let wait = rho <= 0.6 ? 1 + rho * 2.5 : 2.5 + 32 * Math.pow(rho - 0.6, 1.4);
+      l.wait = U.clamp(U.lerp(l.wait || 0, wait, 0.3), 0, 45);
       l.ridesPerHour = Math.min(demand, cap);
       totWait += l.wait * demand; totDem += demand;
     }
@@ -644,10 +648,10 @@ const Sim = {
 
   openSeason() {
     if (G.seasonOpen) return { ok: false, err: 'Already open.' };
-    if (!World.inSeasonWindow()) return { ok: false, err: 'You can open on Nov 10 at the earliest.' };
+    if (!World.inSeasonWindow()) return { ok: false, err: 'The season opens in November.' };
     if (!World.built('ticket').length) return { ok: false, err: 'You need a completed Ticket Office.' };
     const openLift = G.lifts.some(l => l.buildDays <= 0 && l.reachable);
-    if (!openLift) return { ok: false, err: 'You need at least one completed lift near the base.' };
+    if (!openLift) return { ok: false, err: G.lifts.length ? 'Your lift is still being built — speed up time (⏩) and try again.' : 'Build a lift from the base first (🚡 Lifts).' };
     if (!G.runs.some(r => this.runDepth(r) >= 30 && r.reachable)) return { ok: false, err: 'No runs have 30 cm of snow yet. Make snow or wait for storms.' };
     G.seasonOpen = true;
     World.log('🎿 OPENING DAY! The resort is open for the season.', 'good');
@@ -668,8 +672,8 @@ const Sim = {
     G.cash += summerRev;
     World.log(`☀️ Summer: maintenance & insurance ${U.money(summerCost)}, summer operations ${U.money(summerRev)}.`, 'info');
     G.seasonNum++;
-    G.dayNum = Math.round((Date.UTC(2026 + G.seasonNum - 1, 9, 20) - START_DATE) / 86400000);
-    G.seasonOpen = false; G.baseDepth = 0; G.icy = 0; G.passHolders = 0; G.recentSnow = [];
+    G.dayNum = Math.round((Date.UTC(2026 + G.seasonNum - 1, 10, 3) - START_DATE) / 86400000);
+    G.seasonOpen = false; G.baseDepth = 40; G.icy = 0; G.passHolders = 0; G.recentSnow = [];
     G.season = { revenue: 0, expense: 0, visitors: 0, incidents: 0, rescues: 0 };
     G.wx = []; G.stormState = { left: 0, kind: null }; Weather.ensure();
     G.runs.forEach(r => { r.smDepth = 0; r.cells.forEach(i => { Terrain.powder[i] = 0; Terrain.groom[i] = 0.4; Terrain.markSurf(i); }); });

@@ -46,14 +46,15 @@ const Game = {
     for (const l of G.log.slice(0, 30).reverse()) UI.onLog(l.msg, 'info');
     UI.setTool('select');
     UI.refreshTop();
-    G.speed = 1;
-    if (!loadSave) UI.openModal('welcome');
+    G.speed = loadSave ? 1 : 0;
+    if (!G.tut) G.tut = { step: 0, on: false };
+    if (!loadSave) Tutorial.go(0); else Tutorial.show();
   },
 };
 
 UI.m_start = function () {
   return `<div class="title"><div class="logo">🏔️</div><h1>Powderline</h1><p class="sub">Ski Resort Tycoon</p></div>
-  <p>A mountain. A chainsaw. Nine million dollars. Design trails, string lifts up the peaks, groom corduroy under the stars and build the best ski resort in the range.</p>
+  <p>Build lifts, draw ski runs, groom the slopes at night and grow the best ski resort in the mountains. A step-by-step guide shows you how.</p>
   <div class="btns center"><button class="btn primary big" id="newg">⛷️ New Mountain</button>${Save.has() ? '<button class="btn big" id="cont">▶ Continue</button>' : ''}</div>`;
 };
 UI.b_start = function (box) {
@@ -74,7 +75,9 @@ UI.m_welcome = function () {
   UI.init();
   G = null;
   // dummy state so the start screen has a backdrop
+  Tutorial.init();
   World.newGame(12345);
+  G.tut.on = false;
   G.log = []; $('#log').innerHTML = '';
   Terrain.initCanvases();
   Render.cam.x = G.basePoint.x; Render.cam.y = G.basePoint.y - 600; Render.cam.zoom = 0.45;

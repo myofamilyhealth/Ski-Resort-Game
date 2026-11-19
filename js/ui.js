@@ -290,8 +290,9 @@ const UI = {
     if (t) {
       if (t.kind === 'run') {
         const pts = t.points;
-        h += `<h3>⛷️ Design a Run</h3><p class="hint">Click from the <b>top</b> of a lift down the mountain. Each click adds a turn. Double-click / Enter to finish, Backspace to undo.</p>
-        <p class="hint">Rating follows the steepest sustained pitch: <span class="g">● &lt;25%</span> <span class="b">■ 25–40%</span> <b>◆ 40–60%</b> <b>◆◆ &gt;60%</b>. Traverse across the slope to make it easier!</p>
+        h += `<h3>⛷️ Design a Run</h3>
+        <ol class="howto"><li>Click at the <b>top of a lift</b>.</li><li>Keep clicking down the hill to add turns.</li><li>End near the <b>bottom of a lift</b> or the base, then <b>double-click</b>.</li></ol>
+        <p class="hint">The map colours show steepness: <span class="g">green = easy</span>, <span class="b">blue = medium</span>, <b>black = hard</b>, <span style="color:#ff6b6b">red = experts</span>. Zig-zag across the hill to make a run easier. Backspace undoes a point.</p>
         <label>Trail width: <b>${t.width} m</b><input type="range" min="15" max="70" step="5" value="${t.width}" id="runW"></label>
         <label>Name <input id="runName" placeholder="(random)"></label>`;
         if (pts.length >= 2) {
@@ -309,20 +310,25 @@ const UI = {
         }
         if (pts.length) h += ` <button class="btn" id="undoPt">↶ Undo point</button>`;
       } else if (t.kind === 'lift') {
-        h += `<h3>🚡 Build a Lift</h3><p class="hint">Click the <b>bottom terminal</b>, then the <b>top terminal</b>. Bottom within the dashed yellow ring connects to the base area.</p><div class="list">`;
+        h += `<h3>🚡 Build a Lift</h3>
+        <ol class="howto"><li>Pick a lift below.</li><li>Click once for the <b>bottom</b> (inside the yellow circle to connect to the base).</li><li>Click again up the hill for the <b>top</b>. Green line = OK.</li></ol><div class="list">`;
+        const BASIC = { carpet: 'Beginner area', double: '⭐ Best first lift', quad: 'More guests', hsq: 'Fast & popular', gondola: 'Big upgrade' };
         for (const k in LIFTS) {
+          if (!this.showAllLifts && !BASIC[k] && t.sub !== k) continue;
           const L = LIFTS[k];
-          h += `<div class="item ${t.sub === k ? 'on' : ''}" data-lift="${k}"><div class="row"><b>${L.name}</b><span>${U.money(L.base)}+${L.perM}/m</span></div>
-          <small>${L.cat} · ${L.cap.toLocaleString()} pph · ${L.speed} m/s · max ${L.maxLen} m · wind limit ${L.wind} m/s · ${L.ops} ops · ${L.days}d build</small><small class="dim">${L.desc}</small></div>`;
+          h += `<div class="item ${t.sub === k ? 'on' : ''}" data-lift="${k}"><div class="row"><b>${L.name}</b><span>~${U.money(L.base + L.perM * 1200)}</span></div>
+          ${BASIC[k] ? `<span class="tag">${BASIC[k]}</span>` : ''}<small class="dim">${L.desc} Carries ${L.cap.toLocaleString()} people/hour. Builds in ${L.days} day${L.days > 1 ? 's' : ''}.</small></div>`;
         }
-        h += '</div>';
+        h += `</div><button class="btn ghost" id="moreLifts">${this.showAllLifts ? 'Show fewer lifts' : 'Show all 13 lift types'}</button>`;
       } else if (t.kind === 'building') {
-        h += `<h3>🏠 Facilities</h3><p class="hint">Click flat ground (not on a run). Base facilities belong near the bottom.</p><div class="list">`;
+        h += `<h3>🏠 Facilities</h3><p class="hint">Pick a building, then click flat ground (not on a run). Your base village is already built. Add these as you grow.</p><div class="list">`;
+        const BASICB = ['restaurant', 'pumphouse', 'school', 'bar', 'parking', 'lodge', 'patrolhut', 'kennel', 'hotel'];
         for (const k in BUILDINGS) {
+          if (!this.showAllBld && !BASICB.includes(k) && t.sub !== k) continue;
           const B = BUILDINGS[k]; const n = G.buildings.filter(b => b.kind === k).length;
           h += `<div class="item ${t.sub === k ? 'on' : ''}" data-bld="${k}"><div class="row"><b>${B.icon} ${B.name}</b><span>${U.money(B.levels[0].cost)}</span></div><small class="dim">${B.desc}${n ? ` · <b>Owned: ${n}</b>` : ''}</small></div>`;
         }
-        h += '</div>';
+        h += `</div><button class="btn ghost" id="moreBld">${this.showAllBld ? 'Show fewer' : 'Show all buildings'}</button>`;
       } else if (t.kind === 'trees') {
         h += `<h3>🌲 Cut Trees</h3><p class="hint">Click & drag to log trees — widen trails, open glades, or clear building sites. ~$650 per dense cell.</p>
         <label>Brush radius: <b>${t.brush} m</b><input type="range" min="8" max="70" step="2" value="${t.brush}" id="brushR"></label>
@@ -350,6 +356,8 @@ const UI = {
     if (q('#runW')) q('#runW').onchange = () => this.renderPanel();
     if (q('#brushR')) q('#brushR').oninput = (e) => { t.brush = +e.target.value; e.target.previousElementSibling.textContent = t.brush + ' m'; };
     if (q('#finishRun')) q('#finishRun').onclick = () => this.finishRun();
+    if (q('#moreLifts')) q('#moreLifts').onclick = () => { this.showAllLifts = !this.showAllLifts; this.renderPanel(); };
+    if (q('#moreBld')) q('#moreBld').onclick = () => { this.showAllBld = !this.showAllBld; this.renderPanel(); };
     if (q('#undoPt')) q('#undoPt').onclick = () => { t.points.pop(); this.renderPanel(); };
     p.querySelectorAll('[data-lift]').forEach(e => e.onclick = () => { t.sub = e.dataset.lift; t.points = []; this.renderPanel(); });
     p.querySelectorAll('[data-bld]').forEach(e => e.onclick = () => { t.sub = e.dataset.bld; this.renderPanel(); });
@@ -363,18 +371,15 @@ const UI = {
   guidePanel() {
     const has = (k) => World.built(k).length > 0 || G.buildings.some(b => b.kind === k);
     const steps = [
-      [has('ticket'), 'Build a <b>Ticket Office</b> near the base', 'building:ticket'],
-      [has('lodge'), 'Build a <b>Base Lodge</b> & <b>Parking Lot</b>', 'building:lodge'],
-      [G.lifts.some(l => l.fromBase), 'Build a <b>lift</b> starting at the base', 'lift:double'],
-      [G.runs.some(r => r.reachable), 'Design <b>runs</b> from the lift top back down', 'run'],
-      [G.runs.some(r => r.diff === 'green' && r.reachable), 'Include a <b>● green</b> run for beginners', 'run'],
-      [has('garage') && G.groomers.length > 0, 'Build a <b>Maintenance Shop</b> & buy a <b>groomer</b>', 'building:garage'],
-      [has('patrolhq'), 'Build a <b>Ski Patrol HQ</b>', 'building:patrolhq'],
-      [Object.values(G.staff).some(v => v > 0), '<b>Hire staff</b> (Staff → Auto-hire)', null, 'staff'],
-      [has('pumphouse'), 'Optional: <b>Pump House</b> + snowmaking to open early', 'building:pumphouse'],
-      [G.seasonOpen, '<b>Open for the season!</b> (Nov 10+, 30 cm snow)', null],
+      [G.lifts.some(l => l.fromBase), 'Build a <b>lift</b> from the base', 'lift:double'],
+      [G.runs.some(r => r.reachable), 'Draw a <b>run</b> from the lift top back down', 'run'],
+      [G.runs.some(r => r.diff === 'green' && r.reachable), 'Add an easy <b>● green</b> run', 'run'],
+      [G.lifts.some(l => l.buildDays <= 0), 'Speed up time until the lift is built', null],
+      [G.seasonOpen, '<b>Open for the season!</b>', null],
+      [G.runs.length >= 4, 'Grow: 4+ runs for more guests', 'run'],
+      [G.lifts.length >= 2, 'Grow: a second lift', 'lift:quad'],
     ];
-    let h = `<h3>🏔️ Resort Checklist</h3><div class="steps">`;
+    let h = `<h3>🏔️ What to do next</h3><div class="steps">`;
     for (const [ok, txt, go, modal] of steps) h += `<div class="step ${ok ? 'done' : ''}" ${go ? `data-go="${go}"` : modal ? `data-modal="${modal}"` : ''}>${ok ? '✅' : '⬜'} ${txt}</div>`;
     h += '</div>';
     const w = Weather.today();
@@ -467,8 +472,8 @@ const UI = {
     $('#wx').title = `${Weather.label(w)} · wind ${w.wind} m/s (gusts ${w.gust}) · base ${Math.round(G.baseDepth)} cm`;
     $('#guests').textContent = Sim.operating() ? `${Math.round(Sim.onHill()).toLocaleString()} / ${(T.visitors || 0).toLocaleString()}` : (G.seasonOpen ? 'Closed' : 'Pre-season');
     $('#rep').textContent = `${Math.round(G.reputation)}`;
-    $('#aw').textContent = `${Math.round(G.awareness)}`;
-    $('#wait').textContent = Sim.operating() && G.avgWait ? `${Math.round(G.avgWait)}m` : '–';
+    const last = G.history.filter(h => h.visitors > 0).pop();
+    $('#happy').textContent = last ? `${last.sat >= 70 ? '😀' : last.sat >= 50 ? '🙂' : '😟'} ${last.sat}%` : '–';
     $('#depth').textContent = `${Math.round(G.baseDepth)}cm`;
     $('#btnOpen').style.display = G.seasonOpen ? 'none' : '';
     document.querySelectorAll('[data-speed]').forEach(b => b.classList.toggle('on', +b.dataset.speed === G.speed));
@@ -559,8 +564,9 @@ const UI = {
   // Staff
   m_staff() {
     const need = World.staffNeeds();
-    let h = this.head('👷 Staff') + `<p class="hint">Recommended crew sizes update as you build. Understaffing closes lifts, slows patrol and loses sales. Wages are per day.</p>`;
-    h += `<table class="tbl staff"><tr><th>Role</th><th>Wage</th><th>Needed</th><th>Hired</th><th></th></tr>`;
+    let h = this.head('👷 Staff') + `<div class="card"><label><input type="checkbox" id="autoStaff" ${G.autoStaff ? 'checked' : ''}> <b>Hire staff automatically</b> (recommended)</label><small class="dim">The game keeps every job filled to exactly what your resort needs. Turn this off only if you want to manage each crew yourself.</small></div>`;
+    if (G.autoStaff) h += `<p class="hint">Your crews are handled for you. Payroll is currently <b>${U.money(Object.keys(STAFF).reduce((a, k) => a + G.staff[k] * STAFF[k].wage * G.payRate, 0))}/day</b>.</p>`;
+    h += `<details ${G.autoStaff ? '' : 'open'}><summary>Show crew details</summary><table class="tbl staff"><tr><th>Role</th><th>Wage</th><th>Needed</th><th>Hired</th><th></th></tr>`;
     let total = 0;
     for (const k in STAFF) {
       const S = STAFF[k]; const n = G.staff[k]; total += n * S.wage * G.payRate;
@@ -570,12 +576,13 @@ const UI = {
     }
     h += `</table><div class="grid2"><div class="card"><div class="kv"><span>Payroll / day</span><b>${U.money(total)}</b></div><div class="kv"><span>Morale</span><b>${Math.round(G.morale)}%</b></div>
       <label>Pay rate: <b>${Math.round(G.payRate * 100)}%</b> of market <input type="range" id="pay" min="85" max="140" step="5" value="${Math.round(G.payRate * 100)}"></label><small class="dim">Higher pay → better morale → faster patrol, fewer breakdowns, better grooming.</small></div>
-      <div class="card"><button class="btn primary" id="autohire">✨ Auto-hire to recommended</button><p class="hint">Sets every role to exactly what your resort needs right now.</p></div></div>`;
+      <div class="card"><button class="btn primary" id="autohire">✨ Hire to recommended now</button></div></div></details>`;
     return h;
   },
   b_staff(box) {
     box.querySelectorAll('[data-h]').forEach(b => b.onclick = () => { G.staff[b.dataset.h] = Math.max(0, G.staff[b.dataset.h] + +b.dataset.d); this.renderModal(); });
     box.querySelector('#autohire').onclick = () => { const n = World.staffNeeds(); for (const k in n) G.staff[k] = n[k]; World.log('👷 Staffing adjusted to recommended levels.'); this.renderModal(); };
+    box.querySelector('#autoStaff').onchange = (e) => { G.autoStaff = e.target.checked; World.autoStaff(); this.renderModal(); };
     box.querySelector('#pay').onchange = (e) => { G.payRate = +e.target.value / 100; this.renderModal(); };
   },
 
@@ -697,7 +704,7 @@ const UI = {
       <label>Day lift ticket: <b>$${G.prices.ticket}</b><input type="range" id="pt" min="29" max="249" step="5" value="${G.prices.ticket}"></label>
       <small class="dim">Guests think a fair price for your resort today is about <b>$${Math.round(T.refPrice || 0) || '—'}</b>. Higher = fewer but more profitable guests.</small>
       <label>Season pass: <b>$${G.prices.pass}</b><input type="range" id="pp" min="199" max="1499" step="25" value="${G.prices.pass}"></label>
-      <small class="dim">Passes sell before & early in the season (Oct 20 – Dec 15). Pass holders ski free but spend at the lodge.</small>
+      <small class="dim">Passes sell before & early in the season (until Dec 15). Pass holders ski free but spend at the lodge.</small>
       <label>Parking fee: <b>$${G.prices.parking}</b><input type="range" id="pk" min="0" max="40" step="5" value="${G.prices.parking}"></label>
       <small class="dim">Extra revenue, but it hurts the value rating.</small></div>`;
   },
@@ -736,14 +743,36 @@ const UI = {
 
   // Help
   m_help() {
-    return this.head('❓ How to Play') + `<div class="help">
-    <p><b>Goal:</b> Build a thriving ski resort. Design runs, build lifts, hire staff, groom at night, keep guests safe and happy, and grow your reputation season after season.</p>
-    <h4>Controls</h4><p>Right-drag or WASD to pan · Mouse wheel to zoom · Q/R/T/L/B/P/M/X tools · Space pause · 1-4 speed · Esc cancel</p>
-    <h4>Designing runs</h4><p>Pick ⛷️, click near a lift top, then click down the hill. The run is rated by its steepest sustained pitch (US system). Trees are cut automatically (you pay for logging). The bottom must reach a lift, the base (yellow ring), or merge into another run. Use the slope overlay to plan: green &lt;25%, blue 25–40%, black 40–60%, red &gt;60%.</p>
-    <h4>Lifts</h4><p>Surface lifts are cheap; fixed-grip chairs are reliable; detachables are fast and loved; gondolas, funitels and trams are prestige lifts with sightseeing revenue. Watch wind limits!</p>
-    <h4>Grooming</h4><p>Runs get skied off during the day. At night your crews groom by priority. Steep pitches need a <b>winch cat</b>. Choose <b>Drive a groomer tonight</b> on the day report to do it yourself: W/S throttle, A/D steer, Space tiller, B blade (cuts moguls), E winch.</p>
-    <h4>Snow & storms</h4><p>Open once runs have 30 cm. Snowmaking (Pump House + guns + Snowmakers) builds base on cold nights. Storm cycles bring powder days (big crowds!) but raise avalanche danger — Patrol does control work; dogs save lives.</p>
-    <h4>Money</h4><p>Revenue: tickets, passes, rentals, lessons, food, retail, bar, hotel, sightseeing. Biggest costs: wages, lift power, fuel and upkeep. Advertise to raise awareness; keep satisfaction high to build reputation.</p></div>`;
+    const tab = this.helpTab || 'start';
+    const tabs = { start: '🚀 Getting started', runs: '⛷️ Runs', lifts: '🚡 Lifts', groom: '🚜 Grooming', snow: '🌨️ Snow & weather', money: '💰 Money & guests', safety: '⛑️ Patrol & safety', keys: '⌨️ Controls' };
+    const body = {
+      start: `<p><b>Your goal:</b> build a ski resort guests love, and grow it season after season.</p>
+        <ol class="howto big"><li><b>Build a lift</b> from the base village (🚡 Lifts).</li><li><b>Draw runs</b> from the top of the lift back down (⛷️ Runs).</li><li><b>Speed up time</b> (⏩ at the top) until the lift is built.</li><li>Click <b>🎿 Open for Season</b>.</li><li>Each evening, let the crew groom or <b>drive a snowcat yourself</b>.</li><li>Use your profits to add lifts, runs and buildings.</li></ol>
+        <p>Your base village (tickets, lodge, parking, rentals, patrol and snowcat garage), one snowcat and your staff are already set up. Staff are hired automatically.</p>
+        <button class="btn primary" id="restartTut">▶ Restart the step-by-step tutorial</button>`,
+      runs: `<p>Runs are drawn by clicking down the mountain. They should <b>start at the top of a lift</b> and <b>end at the bottom of a lift or the base</b>. A ⚠️ means a run doesn't connect.</p>
+        <p>A run's colour comes from its steepest part: <span class="g">● Green</span> easy, <span class="b">■ Blue</span> medium, <b>◆ Black</b> hard, <b>◆◆ Double black</b> experts only. While drawing, the map is coloured the same way. Zig-zagging across the slope makes a run easier.</p>
+        <p>Guests come in every level: about 1 in 5 are beginners, so always have some green runs. More runs = more guests.</p>`,
+      lifts: `<p>A <b>Double Chair</b> is the best first lift. Put its bottom inside the yellow circle by the base so guests can reach it.</p>
+        <p>Faster and bigger lifts carry more people and shorten lift lines. Very strong wind can stop chairlifts (a "wind hold"); T-bars and the Funitel keep running in wind.</p>
+        <p>A <b>Magic Carpet</b> near the base makes a great beginner area.</p>`,
+      groom: `<p>Skiers wear runs down into bumps during the day. Every night your snowcats <b>groom</b> them flat again (that's the "corduroy" lines).</p>
+        <p>At the end of each day choose <b>🚜 Drive a groomer tonight</b> to do it yourself:<br><b>W / S</b> drive forward / back · <b>A / D</b> steer · <b>Space</b> tiller on/off · <b>B</b> blade (flattens big bumps) · <b>E</b> winch (steep runs).</p>
+        <p>Orange dots mark the run edges in the dark, and the minimap shows what still needs grooming (red). Very steep runs need a <b>winch</b> snowcat, which you can buy in 🚜 Fleet.</p>`,
+      snow: `<p>Runs need <b>30 cm of snow</b> to open. Storms bring fresh powder, and powder days bring big crowds.</p>
+        <p>The 🌨️ Weather screen shows a 7-day forecast. Warm days melt snow. A <b>Pump House</b> plus snowmaking on your runs adds snow on cold nights.</p>`,
+      money: `<p>You earn money from lift tickets, season passes, rentals, food and more. Your biggest costs are staff wages and lift power.</p>
+        <p><b>Happiness</b> (top bar) is how much guests liked their day. Keep lift lines short, runs groomed and have enough food seats. Happy guests raise your <b>Reputation</b>, which brings more guests.</p>
+        <p>Use 📣 Marketing to bring in more people, and 💲 Pricing to set ticket prices. If cash gets low, 📊 Money lets you take a loan.</p>`,
+      safety: `<p>Ski patrol handles injuries automatically. Snowmobiles and summit huts help them get there faster.</p>
+        <p>After big storms the <b>avalanche danger</b> rises and patrol does control work on steep runs. Avalanche rescue dogs (build a Kennel, then adopt in ⛑️ Patrol) save buried skiers.</p>`,
+      keys: `<table class="tbl"><tr><td>Move the map</td><td>Right-click & drag, or W A S D</td></tr><tr><td>Zoom</td><td>Mouse wheel</td></tr><tr><td>Pause / speed</td><td>Space / 1 2 3 4</td></tr><tr><td>Tools</td><td>Q select · R runs · L lifts · B build · T trees · P park · M snow · X delete</td></tr><tr><td>Finish / undo a run</td><td>Double-click or Enter / Backspace</td></tr><tr><td>Cancel</td><td>Esc</td></tr></table>`,
+    };
+    return this.head('❓ How to Play') + `<div class="tabs">${Object.entries(tabs).map(([k, v]) => `<button class="tabb ${k === tab ? 'on' : ''}" data-ht="${k}">${v}</button>`).join('')}</div><div class="help">${body[tab]}</div>`;
+  },
+  b_help(box) {
+    box.querySelectorAll('[data-ht]').forEach(b => b.onclick = () => { this.helpTab = b.dataset.ht; this.renderModal(); });
+    const r = box.querySelector('#restartTut'); if (r) r.onclick = () => { this.closeModal(); Tutorial.restart(); };
   },
 
   // Day report
@@ -760,7 +789,7 @@ const UI = {
       h += `<div class="grid2"><div class="card">${this.breakdown(T)}</div><div class="card"><h4>Guest reviews</h4>${(T.reviews || []).map(r => `<div class="review"><span class="stars">${r.s}</span> ${r.t}</div>`).join('') || '<p class="dim">No comments.</p>'}
       <div class="kv"><span>Patrol calls</span><b>${T.incidents.length}</b></div>${T.turned ? `<div class="kv"><span>Turned away</span><b class="bad">${T.turned}</b></div>` : ''}</div></div>`;
     } else {
-      h += `<p>${G.seasonOpen ? (T.closedReason || 'The resort did not operate today.') : 'Pre-season. Keep building! Open the resort from the top bar once you\'re ready (Nov 10+ with 30 cm of snow on a lift-served run).'}</p><div class="card">${this.breakdown(T)}</div>`;
+      h += `<p>${G.seasonOpen ? (T.closedReason || 'The resort did not operate today.') : 'Pre-season. Keep building! Build a lift and a run, then click 🎿 Open for Season at the top.'}</p><div class="card">${this.breakdown(T)}</div>`;
     }
     if (tom) h += `<p class="hint"><b>Tonight / tomorrow:</b> ${Weather.icon(tom)} ${Weather.label(tom)}, low ${tom.tLo}°C${tom.snowNight ? `, ${Weather.forecastText(tom, 1)} overnight` : ''}. ${Weather.stormOutlook()}</p>`;
     h += `<div class="night"><h4>🌙 Night shift</h4>`;
@@ -784,7 +813,7 @@ const UI = {
     return `<div class="mhead"><h2>🏁 Season ${G.seasonNum} Complete!</h2></div>
     <div class="grid3"><div class="stat"><small>Skier visits</small><b>${S.visitors.toLocaleString()}</b></div><div class="stat"><small>Revenue</small><b class="ok">${U.money(S.revenue)}</b></div><div class="stat"><small>Profit</small><b class="${S.revenue - S.expense >= 0 ? 'ok' : 'bad'}">${U.money(S.revenue - S.expense)}</b></div></div>
     <div class="card"><div class="kv"><span>Season snowfall</span><b>${Math.round(G.seasonSnow)} cm</b></div><div class="kv"><span>Reputation</span><b>${Math.round(G.reputation)}</b></div><div class="kv"><span>Patrol incidents</span><b>${S.incidents}</b></div><div class="kv"><span>Avalanche rescues</span><b>${S.rescues}</b></div></div>
-    <p>Summer is here. Crews will maintain the lifts and the hotel & gondola run summer operations. Next season starts Oct 20 — use pre-season to build!</p>
+    <p>Summer is here. Crews will maintain the lifts and the hotel & gondola run summer operations. Next season starts in early November.</p>
     <button class="btn primary" id="next">☀️ Skip summer → Season ${G.seasonNum + 1}</button>`;
   },
   b_season(box) { box.querySelector('#next').onclick = () => { this.modal = null; $('#modal').classList.remove('show'); G.speed = 1; this.prevSpeed = null; Sim.startNextSeason(); Save.save(); }; },
