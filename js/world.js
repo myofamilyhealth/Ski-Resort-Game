@@ -130,7 +130,7 @@ const World = {
     if (points.length < 2) return { ok: false, err: 'Click at least 2 points (top → bottom).' };
     const info = this.analyzeRun(points, width);
     if (info.len < 120) return { ok: false, err: 'Run is too short (min 120 m).', info };
-    if (info.vert < 25) return { ok: false, err: 'Runs must drop at least 25 m. Draw from top to bottom.', info };
+    if (info.vert < 10) return { ok: false, err: 'Runs must drop at least 10 m. Draw from top to bottom.', info };
     if (info.uphill > 8) return { ok: false, err: 'Part of this run goes uphill — skiers can\'t climb.', info };
     const cost = this.runCost(info, width);
     return { ok: true, info, cost };
