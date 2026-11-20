@@ -1073,10 +1073,10 @@ diffuseColor.rgb += sp * near * 0.6;`);
   hud(dt = 0) {
     const el = (id) => document.getElementById(id);
     const T = G.today || {};
-    el('h3stats').innerHTML = `<b>${G.name || 'Your resort'}</b><br>${World.dateStr()} · ${G.phase === 'drive' ? '🌙 ' : ''}${Sim.clockStr()}<br>💰 ${U.money(G.cash)} · 👥 ${Sim.operating() ? Math.round(Sim.onHill()).toLocaleString() + ' on the hill' : G.seasonOpen ? 'closed' : 'pre-season'} · ❄ ${Math.round(G.baseDepth)} cm`;
+    el('h3stats').innerHTML = `<b>${G.name || 'Your resort'}</b><br>${World.dateStr()} · ${G.phase === 'drive' ? '🌙 ' : ''}${Sim.clockStr()}<br>💰 ${U.money(G.cash)} · 👥 ${Sim.operating() ? Math.round(Sim.onHill()).toLocaleString() + ' on the hill' : G.seasonOpen ? 'closed' : 'pre-season'} · ❄ ${U.inch(G.baseDepth)} base · ${U.F(Weather.today().tHi)}`;
     const modeTxt = { walk: '🥾 Walking', ski: '🎿 Skiing', ride: '🚡 Riding', drive: '🚜 Grooming', tour: '🚁 Touring' }[this.mode];
     const sp = Math.hypot(this.P.vx, this.P.vz) * 3.6;
-    el('h3mode').innerHTML = `${modeTxt}${this.mode === 'ski' ? ` · <b>${Math.round(sp)} km/h</b>` : ''}${this.mode === 'drive' ? ` · <b>${(Math.abs(Drive.v) * 3.6).toFixed(0)} km/h</b> · fuel ${Math.round(Drive.fuel * 100)}% · tiller ${Drive.tiller ? 'DOWN' : 'up'} · blade ${Drive.blade ? 'DOWN' : 'up'} · groomed ${(Drive.cells * CELL * CELL / 10000).toFixed(2)} ha` : ''}`;
+    el('h3mode').innerHTML = `${modeTxt}${this.mode === 'ski' ? ` · <b>${U.kmh2mph(sp)}</b>` : ''}${this.mode === 'drive' ? ` · <b>${U.mph(Math.abs(Drive.v))}</b> · fuel ${Math.round(Drive.fuel * 100)}% · tiller ${Drive.tiller ? 'DOWN' : 'up'} · blade ${Drive.blade ? 'DOWN' : 'up'} · groomed ${U.ac(Drive.cells * CELL * CELL / 10000, 2)}` : ''}`;
     // where am I
     const ci = Terrain.cellAt(this.P.x, this.P.z); let where = '';
     for (const r of G.runs) if (r.cells.includes(ci)) { where = `${DIFF[r.diff].icon} ${r.name} · ${Sim.surfaceLabel(r)}`; break; }

@@ -71,8 +71,8 @@ const Game = {
     const s = SITES[this.site];
     $('#h3tour').innerHTML = `<div class="tour-card"><small>Mountain ${this.site + 1} of ${SITES.length}</small><h2>${s.name}</h2><p>${s.desc}</p>
       <div class="tags">${s.tags.map(t => `<span>${t}</span>`).join('')}</div>
-      <div class="kv"><span>Vertical drop</span><b>${Math.round(Terrain.maxE - Terrain.minE).toLocaleString()} m</b></div>
-      <div class="kv"><span>Summit</span><b>${Math.round(Terrain.maxE).toLocaleString()} m</b></div>
+      <div class="kv"><span>Vertical drop</span><b>${U.ft(Terrain.maxE - Terrain.minE)}</b></div>
+      <div class="kv"><span>Summit</span><b>${U.ft(Terrain.maxE)}</b></div>
       <div class="kv"><span>Land price</span><b>${U.money(s.price)}</b></div>
       <div class="kv"><span>Money left to build</span><b>${U.money(10000000 - s.price)}</b></div>
       <div class="btns"><button class="btn primary" id="tourBuy">🏔️ Buy this mountain</button><button class="btn" id="tourNext">Next mountain ➡</button><button class="btn ghost" id="tourBack">⬅ All mountains</button></div></div>`;
@@ -128,7 +128,7 @@ UI.b_name = function (box) {
   box.querySelector('#nameGo').onclick = go; inp.onkeydown = (e) => { if (e.key === 'Enter') go(); };
 };
 UI.m_welcome = function () {
-  return this.head('Welcome, General Manager!') + `<p>It's <b>October 20</b>. You own an undeveloped mountain with ${Math.round(Terrain.maxE - Terrain.minE)} m of vertical. Snow usually starts flying in November — get the resort built before then!</p>
+  return this.head('Welcome, General Manager!') + `<p>It's <b>October 20</b>. You own an undeveloped mountain with ${U.ft(Terrain.maxE - Terrain.minE)} of vertical. Snow usually starts flying in November — get the resort built before then!</p>
   <ol class="help"><li>Follow the <b>Resort Checklist</b> on the right — click any step to jump to that tool.</li>
   <li>Plan runs with the <b>slope overlay</b> (shown automatically while designing): <span class="g">green</span> &lt;25%, <span class="b">blue</span> 25–40%, black 40–60%, <span style="color:#e33">red</span> = experts only.</li>
   <li>Use <b>Staff → Auto-hire</b> after you build things.</li>

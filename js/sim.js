@@ -65,7 +65,7 @@ const Sim = {
     for (const l of G.lifts) {
       const T = LIFTS[l.kind];
       l.holdFrac = l.buildDays > 0 ? 0 : U.clamp((w.gust - T.wind) / 8, 0, 1);
-      if (l.holdFrac > 0 && l.buildDays <= 0) World.log(`${l.name}: ${l.holdFrac >= 1 ? 'on WIND HOLD all day' : 'wind holds expected'} (gusts ${w.gust} m/s, limit ${T.wind} m/s).`, 'warn');
+      if (l.holdFrac > 0 && l.buildDays <= 0) World.log(`${l.name}: ${l.holdFrac >= 1 ? 'on WIND HOLD all day' : 'wind holds expected'} (gusts ${U.mph(w.gust)}, limit ${U.mph(T.wind)}).`, 'warn');
       l.ridesToday = 0;
     }
     this.avalancheMorning(w);
@@ -76,7 +76,7 @@ const Sim = {
       this.scheduleIncidents();
       // event scheduled today
       for (const ev of G.events) if (ev.day === G.dayNum) { G.today.events.push(ev.key); World.log(`🎉 Today: ${EVENTS[ev.key].name}!`, 'good'); }
-      World.log(`${Weather.icon(w)} ${Weather.label(w)} ${w.tHi}°C. ${w.snowNight ? w.snowNight + ' cm overnight! ' : ''}${G.today.visitors ? 'Expecting ~' + G.today.visitors.toLocaleString() + ' guests.' : 'Resort can\'t operate today: ' + (G.today.closedReason || 'no open terrain') + '.'}`, w.snowNight >= 10 ? 'good' : G.today.visitors ? 'info' : 'warn');
+      World.log(`${Weather.icon(w)} ${Weather.label(w)} ${U.F(w.tHi)}. ${w.snowNight ? U.inch(w.snowNight) + ' overnight! ' : ''}${G.today.visitors ? 'Expecting ~' + G.today.visitors.toLocaleString() + ' guests.' : 'Resort can\'t operate today: ' + (G.today.closedReason || 'no open terrain') + '.'}`, w.snowNight >= 10 ? 'good' : G.today.visitors ? 'info' : 'warn');
     } else if (G.seasonOpen && !World.inSeasonWindow()) {
       // past closing day
     }
@@ -130,7 +130,7 @@ const Sim = {
     if (!openLifts.length || openKm <= 0 || !World.built('ticket').length) {
       T.visitors = 0;
       const holds = G.lifts.some(l => l.buildDays <= 0 && l.holdFrac >= 1);
-      T.closedReason = !World.built('ticket').length ? 'no finished Ticket Office' : !G.lifts.some(l => l.buildDays <= 0) ? 'no finished lifts' : holds ? 'lifts on wind hold' : G.runs.some(r => r.avyClosed) ? 'avalanche closures' : G.runs.every(r => this.runDepth(r) < 30) ? 'not enough snow (30 cm needed)' : 'no lift-served open runs';
+      T.closedReason = !World.built('ticket').length ? 'no finished Ticket Office' : !G.lifts.some(l => l.buildDays <= 0) ? 'no finished lifts' : holds ? 'lifts on wind hold' : G.runs.some(r => r.avyClosed) ? 'avalanche closures' : G.runs.every(r => this.runDepth(r) < 30) ? 'not enough snow (12 in needed)' : 'no lift-served open runs';
       return;
     }
     const market = 250 + G.awareness * 75;
@@ -557,7 +557,7 @@ const Sim = {
     if (S[keys[1]] < 60) out.push({ s: stars(S[keys[1]]), t: U.pick(bad[keys[1]]) });
     const top = keys[keys.length - 1];
     if (S[top] > 70) out.push({ s: stars(S[top]), t: U.pick(good[top]) });
-    if (w.snowNight >= 15 && S.snow > 70) out.push({ s: '★★★★★', t: `${w.snowNight} cm overnight. Best powder day of the year!` });
+    if (w.snowNight >= 15 && S.snow > 70) out.push({ s: '★★★★★', t: `${U.inch(w.snowNight)} overnight. Best powder day of the year!` });
     G.reviews = out.concat(G.reviews).slice(0, 30);
     T.reviews = out;
   },
@@ -605,7 +605,7 @@ const Sim = {
         smCost += km * 2400 * gun.cost;
         for (const i of r.cells) { Terrain.groom[i] = Math.min(Terrain.groom[i], 0.3); Terrain.markSurf(i); }
       }
-      if (smKm > 0) { World.spend(smCost, 'snowmaking'); World.log(`❄️ Snowmakers covered ${smKm.toFixed(1)} km of trail overnight (${U.money(smCost)}).`, 'info'); }
+      if (smKm > 0) { World.spend(smCost, 'snowmaking'); World.log(`❄️ Snowmakers covered ${U.mi(smKm)} of trail overnight (${U.money(smCost)}).`, 'info'); }
     }
     // melt / settle
     if (w.tHi > 3) { const m = (w.tHi - 3) * 1.4; G.baseDepth = Math.max(0, G.baseDepth - m); G.runs.forEach(r => r.smDepth = Math.max(0, r.smDepth - m * 0.6)); G.icy = Math.min(1, G.icy + 0.35); }
@@ -690,7 +690,7 @@ const Sim = {
     if (!World.built('ticket').length) return { ok: false, err: 'You need a completed Ticket Office.' };
     const openLift = G.lifts.some(l => l.buildDays <= 0 && l.reachable);
     if (!openLift) return { ok: false, err: G.lifts.length ? 'Your lift is still being built — speed up time (⏩) and try again.' : 'Build a lift from the base first (🚡 Lifts).' };
-    if (!G.runs.some(r => this.runDepth(r) >= 30 && r.reachable)) return { ok: false, err: 'No runs have 30 cm of snow yet. Make snow or wait for storms.' };
+    if (!G.runs.some(r => this.runDepth(r) >= 30 && r.reachable)) return { ok: false, err: 'No runs have 12 in of snow yet. Make snow or wait for storms.' };
     G.seasonOpen = true;
     World.log('🎿 OPENING DAY! The resort is open for the season.', 'good');
     G.awareness += 4;

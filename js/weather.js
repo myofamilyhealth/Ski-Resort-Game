@@ -65,10 +65,10 @@ const Weather = {
   },
   forecastText(d, ahead) {
     const tot = d.snowNight + d.snowDay;
-    if (tot <= 0) return '0 cm';
+    if (tot <= 0) return '0 in';
     const err = ahead === 0 ? 0 : Math.min(0.5, 0.12 * ahead);
     const lo = Math.max(0, Math.round(tot * (1 - err) * (ahead ? d.fcErr * 0.9 + 0.1 : 1))), hi = Math.round(tot * (1 + err) * (ahead ? d.fcErr : 1));
-    return ahead === 0 ? `${tot} cm` : `${Math.min(lo, hi)}–${Math.max(lo, hi, 1)} cm`;
+    return ahead === 0 ? U.inch(tot) : `${U.inN(Math.min(lo, hi))}–${Math.max(1, U.inN(Math.max(lo, hi)))} in`;
   },
   stormOutlook() {
     // find next storm in forecast
@@ -77,7 +77,7 @@ const Weather = {
       if (d.storm) {
         const T = STORM_TYPES[d.storm];
         let total = 0, j = k; while (j < G.wx.length && G.wx[j].storm === d.storm) { total += G.wx[j].snowNight + G.wx[j].snowDay; j++; }
-        return `${T.name} ${k === 0 ? 'in progress' : 'arriving ' + (k === 1 ? 'tomorrow' : 'in ' + k + ' days')} — ${Math.round(total * 0.75)}–${Math.round(total * 1.25)} cm. ${T.desc}`;
+        return `${T.name} ${k === 0 ? 'in progress' : 'arriving ' + (k === 1 ? 'tomorrow' : 'in ' + k + ' days')} — ${U.inN(total * 0.75)}–${U.inN(total * 1.25)} in. ${T.desc}`;
       }
     }
     return 'High pressure. No major storms in the 6-day outlook.';

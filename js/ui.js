@@ -120,17 +120,17 @@ const UI = {
     const tip = $('#hoverTip');
     const el = Terrain.heightAt(w.x, w.y), sl = Terrain.slopeAt(w.x, w.y);
     const ci = Terrain.cellAt(w.x, w.y);
-    let txt = `${Math.round(el)} m · ${Math.round(sl)}% grade`;
+    let txt = `${U.ft(el)} · ${Math.round(sl)}% grade`;
     if (ci >= 0 && Terrain.trees[ci] > 0) txt += ' · 🌲 forest';
     if (ci >= 0 && Terrain.rock[ci]) txt += ' · 🪨 cliffs';
     if (t && t.kind === 'run' && t.points.length) {
       const pts = [...t.points, w];
       const info = World.analyzeRun(pts, t.width);
-      txt += ` · run ${Math.round(info.len)} m, max pitch ${Math.round(info.maxPitch)}% → ${DIFF[info.diff].icon} ${DIFF[info.diff].short}`;
+      txt += ` · run ${U.ft(info.len)}, max pitch ${Math.round(info.maxPitch)}% → ${DIFF[info.diff].icon} ${DIFF[info.diff].short}`;
     }
     if (t && t.kind === 'lift' && t.points.length === 1) {
       const v = World.validateLift(t.sub, t.points[0], w);
-      txt += v.ok ? ` · ${Math.round(v.len)} m, ${Math.round(v.vert)} m vert, ${U.money(v.cost)}` : ' · ' + v.err;
+      txt += v.ok ? ` · ${U.ft(v.len)}, ${U.ft(v.vert)} vert, ${U.money(v.cost)}` : ' · ' + v.err;
     }
     tip.textContent = txt;
     tip.style.left = (this.mouse.x + 16) + 'px'; tip.style.top = (this.mouse.y + 16) + 'px';
@@ -182,7 +182,7 @@ const UI = {
       if (!run) { this.toast('Click a run to install snow guns along it.', 'bad'); return; }
       if (run.snowmaking) { run.smOn = !run.smOn; this.toast(`Snowmaking on ${run.name}: ${run.smOn ? 'ON' : 'OFF'}`); this.renderPanel(); return; }
       const cost = Math.round(run.len * 185);
-      this.confirm(`Install snowmaking (pipe, hydrants & fan guns) on ${run.name}? ${Math.round(run.len)} m × $185/m = ${U.money(cost)}. Needs a Pump House and Snowmakers.`, () => {
+      this.confirm(`Install snowmaking (pipe, hydrants & fan guns) on ${run.name}? ${U.ft(run.len)} × $56/ft = ${U.money(cost)}. Needs a Pump House and Snowmakers.`, () => {
         if (G.cash < cost) return this.toast('Not enough cash.', 'bad');
         World.spend(cost, 'construction'); run.snowmaking = true; run.smOn = true; run.smTier = 1;
         World.log(`💧 Snowmaking installed on ${run.name}.`, 'build'); this.renderPanel();
@@ -301,15 +301,15 @@ const UI = {
         h += `<h3>⛷️ Design a Run</h3>
         <ol class="howto"><li>Click at the <b>top of a lift</b>.</li><li>Keep clicking down the hill to add turns.</li><li>End near the <b>bottom of a lift</b> or the base, then <b>double-click</b>.</li></ol>
         <p class="hint">The map colours show steepness: <span class="g">green = easy</span>, <span class="b">blue = medium</span>, <b>black = hard</b>, <span style="color:#ff6b6b">red = experts</span>. Zig-zag across the hill to make a run easier. Backspace undoes a point.</p>
-        <label>Trail width: <b>${t.width} m</b><input type="range" min="15" max="70" step="5" value="${t.width}" id="runW"></label>
+        <label>Trail width: <b>${U.ft(t.width)}</b><input type="range" min="15" max="70" step="5" value="${t.width}" id="runW"></label>
         <label>Name <input id="runName" placeholder="(random)"></label>`;
         if (pts.length >= 2) {
           const v = World.validateRun(pts, t.width);
           if (v.info) {
             const D = DIFF[v.info.diff];
             h += `<div class="card"><div class="big">${D.icon} ${D.short}</div>
-            <div class="kv"><span>Length</span><b>${Math.round(v.info.len)} m</b></div>
-            <div class="kv"><span>Vertical</span><b>${Math.round(v.info.vert)} m</b></div>
+            <div class="kv"><span>Length</span><b>${U.ft(v.info.len)}</b></div>
+            <div class="kv"><span>Vertical</span><b>${U.ft(v.info.vert)}</b></div>
             <div class="kv"><span>Avg / Max pitch</span><b>${Math.round(v.info.avgPitch)}% / ${Math.round(v.info.maxPitch)}%</b></div>
             ${v.cost ? `<div class="kv"><span>Tree clearing</span><b>${U.money(v.cost.trees)}</b></div><div class="kv"><span>Grading & signage</span><b>${U.money(v.cost.grading)}</b></div><div class="kv"><span>Total</span><b>${U.money(v.cost.total)}</b></div>` : ''}
             ${v.ok ? '' : `<p class="err">${v.err}</p>`}</div>`;
@@ -342,7 +342,7 @@ const UI = {
         h += `</div>`;
       } else if (t.kind === 'trees') {
         h += `<h3>🌲 Cut Trees</h3><p class="hint">Click & drag to log trees — widen trails, open glades, or clear building sites. ~$650 per dense cell.</p>
-        <label>Brush radius: <b>${t.brush} m</b><input type="range" min="8" max="70" step="2" value="${t.brush}" id="brushR"></label>
+        <label>Brush radius: <b>${U.ft(t.brush)}</b><input type="range" min="8" max="70" step="2" value="${t.brush}" id="brushR"></label>
         <p>Spent this session: <b id="treeSpent">${U.money(t.spent || 0)}</b></p>`;
       } else if (t.kind === 'park') {
         h += `<h3>🛹 Terrain Park</h3><p class="hint">Click a run to turn it into a park, then click along it to place features. Parks need <b>Park Crew</b> staff and ideally a <b>park cat</b> groomer.</p><div class="list">`;
@@ -362,9 +362,9 @@ const UI = {
     p.innerHTML = h;
     // bindings
     const q = (s) => p.querySelector(s);
-    if (q('#runW')) q('#runW').oninput = (e) => { t.width = +e.target.value; e.target.previousElementSibling.textContent = t.width + ' m'; };
+    if (q('#runW')) q('#runW').oninput = (e) => { t.width = +e.target.value; e.target.previousElementSibling.textContent = U.ft(t.width); };
     if (q('#runW')) q('#runW').onchange = () => this.renderPanel();
-    if (q('#brushR')) q('#brushR').oninput = (e) => { t.brush = +e.target.value; e.target.previousElementSibling.textContent = t.brush + ' m'; };
+    if (q('#brushR')) q('#brushR').oninput = (e) => { t.brush = +e.target.value; e.target.previousElementSibling.textContent = U.ft(t.brush); };
     if (t && t.kind === 'snowmaking') this.bindSnowPanel(p);
     if (q('#finishRun')) q('#finishRun').onclick = () => this.finishRun();
     if (q('#moreLifts')) q('#moreLifts').onclick = () => { this.showAllLifts = !this.showAllLifts; this.renderPanel(); };
@@ -390,12 +390,12 @@ const UI = {
     const active = inst.filter(r => r.smOn && Sim.runDepth(r) < target && cold <= SNOWGUNS[(r.smTier || 1) - 1].temp);
     let estKm = 0, estCost = 0;
     for (const r of active.sort((a, b) => Sim.runDepth(a) - Sim.runDepth(b))) { const km = r.len / 1000; if (estKm + km > pumps + 0.001) continue; estKm += km; estCost += km * 2400 * SNOWGUNS[(r.smTier || 1) - 1].cost; }
-    const tonight = !pumps ? '<b class="bad">No pump house</b>' : cold > -1 ? `<b class="bad">Too warm (${cold}°C)</b>` : estKm ? `<b class="ok">Making snow on ${estKm.toFixed(1)} km</b>` : '<b>Nothing to do</b>';
+    const tonight = !pumps ? '<b class="bad">No pump house</b>' : cold > -1 ? `<b class="bad">Too warm (${U.F(cold)})</b>` : estKm ? `<b class="ok">Making snow on ${U.mi(estKm)}</b>` : '<b>Nothing to do</b>';
     let h = `<h3>💧 Snowmaking Control</h3>
-    <div class="card"><div class="kv"><span>Tonight's low</span><b>${cold}°C</b></div>
+    <div class="card"><div class="kv"><span>Tonight's low</span><b>${U.F(cold)}</b></div>
       <div class="kv"><span>Tonight</span>${tonight}</div>
       ${estCost ? `<div class="kv"><span>Est. cost tonight</span><b>${U.money(estCost)}</b></div>` : ''}
-      <div class="kv"><span>Pump capacity</span><b>${onKm.toFixed(1)} / ${pumps} km switched on</b></div>
+      <div class="kv"><span>Pump capacity</span><b>${U.mi(onKm)} on / ${U.mi(pumps)} capacity</b></div>
       <div class="bar"><i style="width:${pumps ? Math.min(100, onKm / pumps * 100) : 0}%;background:${onKm > pumps ? '#f5b700' : '#4fb3ff'}"></i></div>
       ${onKm > pumps ? '<small class="dim">More guns are on than your pumps can feed. The thinnest runs get snow first.</small>' : ''}
       <div class="kv"><span>Snowmakers</span><b>${G.staff.snowmaker} / ${World.staffNeeds().snowmaker}</b></div></div>`;
@@ -403,10 +403,10 @@ const UI = {
     if (!pumpB.length) h += `<div class="card"><b>💧 No Pump House yet</b><p class="hint">Snow guns need water and air from a Pump House.</p><button class="btn primary" id="smBuildPump">Build a Pump House (${U.money(BUILDINGS.pumphouse.levels[0].cost)})</button></div>`;
     else for (const b of pumpB) {
       const nx = BUILDINGS.pumphouse.levels[b.level];
-      h += `<div class="card"><div class="row"><b>💧 Pump House · Level ${b.level}</b><span>${World.bstat(b, 'km')} km${b.buildDays > 0 ? ' · 🏗 upgrading ' + b.buildDays + 'd' : ''}</span></div>
-        ${nx ? `<button class="btn small" data-smpump="${b.id}" ${b.buildDays > 0 ? 'disabled' : ''}>⬆ Upgrade to ${nx.km} km (${U.money(nx.cost)})</button>` : '<small class="dim">Fully upgraded.</small>'}</div>`;
+      h += `<div class="card"><div class="row"><b>💧 Pump House · Level ${b.level}</b><span>${U.mi(World.bstat(b, 'km'))}${b.buildDays > 0 ? ' · 🏗 upgrading ' + b.buildDays + 'd' : ''}</span></div>
+        ${nx ? `<button class="btn small" data-smpump="${b.id}" ${b.buildDays > 0 ? 'disabled' : ''}>⬆ Upgrade to ${U.mi(nx.km)} (${U.money(nx.cost)})</button>` : '<small class="dim">Fully upgraded.</small>'}</div>`;
     }
-    h += `<label>Stop making snow when a run reaches <b>${target} cm</b><input type="range" id="smTarget" min="50" max="200" step="10" value="${target}"></label>
+    h += `<label>Stop making snow when a run reaches <b>${U.inch(target)}</b><input type="range" id="smTarget" min="50" max="200" step="10" value="${target}"></label>
     <div class="btns"><button class="btn" id="smAllOn">✅ All guns ON</button><button class="btn" id="smAllOff">⛔ All guns OFF</button></div>
     <p class="hint">Click a run on the map to install guns, or use the lists below.</p>`;
     const withSM = G.runs.filter(r => r.snowmaking), without = G.runs.filter(r => !r.snowmaking);
@@ -417,7 +417,7 @@ const UI = {
       const tier = r.smTier || 1, gun = SNOWGUNS[tier - 1], nxt = SNOWGUNS[tier];
       const st = !r.smOn ? '<span class="dim">Off</span>' : dep >= target ? '<span class="ok">Deep enough</span>' : cold > gun.temp ? '<span class="warnc">Too warm</span>' : '<span class="ok">Making snow ❄</span>';
       h += `<div class="smrow ${r.smOn ? 'on' : ''}"><div class="row"><b>${DIFF[r.diff].icon} ${r.name}</b><label class="switch" title="Turn guns on/off"><input type="checkbox" data-smtog="${r.id}" ${r.smOn ? 'checked' : ''}><i></i></label></div>
-        <div class="row"><small>${dep} cm · ${gun.short} guns (${gun.temp}°C) · ${st}</small>${nxt ? `<button class="btn small" data-smupg="${r.id}" title="${nxt.desc}">⬆ ${nxt.short} ${U.money(r.len * nxt.perM)}</button>` : '<small class="ok">Max level</small>'}</div></div>`;
+        <div class="row"><small>${U.inch(dep)} · ${gun.short} guns (${U.F(gun.temp)}) · ${st}</small>${nxt ? `<button class="btn small" data-smupg="${r.id}" title="${nxt.desc}">⬆ ${nxt.short} ${U.money(r.len * nxt.perM)}</button>` : '<small class="ok">Max level</small>'}</div></div>`;
     }
     h += `</div><h4>🛒 Runs without snowmaking (${without.length})</h4>`;
     if (without.length) {
@@ -425,7 +425,7 @@ const UI = {
       h += `<button class="btn primary small" id="smBuyAll" ${G.cash < all ? 'disabled' : ''}>Buy guns for all ${without.length} runs · ${U.money(all)}</button><div class="list" style="margin-top:6px">`;
       for (const r of without) {
         const c = Math.round(r.len * SNOWGUNS[0].perM);
-        h += `<div class="smrow"><div class="row"><b>${DIFF[r.diff].icon} ${r.name}</b><button class="btn small" data-sminst="${r.id}" ${G.cash < c ? 'disabled' : ''}>Buy ${U.money(c)}</button></div><small class="dim">${Math.round(r.len)} m · ${Sim.runDepth(r)} cm of snow now</small></div>`;
+        h += `<div class="smrow"><div class="row"><b>${DIFF[r.diff].icon} ${r.name}</b><button class="btn small" data-sminst="${r.id}" ${G.cash < c ? 'disabled' : ''}>Buy ${U.money(c)}</button></div><small class="dim">${U.ft(r.len)} · ${U.inch(Sim.runDepth(r))} of snow now</small></div>`;
       }
       h += '</div>';
     } else if (G.runs.length) h += '<p class="ok">Every run has snowmaking. ✔</p>';
@@ -436,7 +436,7 @@ const UI = {
   bindSnowPanel(p) {
     const q = (s) => p.querySelector(s);
     const byId = (id) => G.runs.find(r => r.id == id);
-    if (q('#smTarget')) { q('#smTarget').oninput = (e) => { e.target.previousElementSibling.textContent = e.target.value + ' cm'; }; q('#smTarget').onchange = (e) => { G.smTarget = +e.target.value; this.renderPanel(); }; }
+    if (q('#smTarget')) { q('#smTarget').oninput = (e) => { e.target.previousElementSibling.textContent = U.inch(+e.target.value); }; q('#smTarget').onchange = (e) => { G.smTarget = +e.target.value; this.renderPanel(); }; }
     if (q('#smAllOn')) q('#smAllOn').onclick = () => { G.runs.forEach(r => { if (r.snowmaking) r.smOn = true; }); World.log('💧 All snow guns switched ON.'); this.renderPanel(); };
     if (q('#smAllOff')) q('#smAllOff').onclick = () => { G.runs.forEach(r => { if (r.snowmaking) r.smOn = false; }); World.log('💧 All snow guns switched OFF.'); this.renderPanel(); };
     if (q('#smBuyAll')) q('#smBuyAll').onclick = () => { const list = G.runs.filter(r => !r.snowmaking); const c = list.reduce((a, r) => a + Math.round(r.len * SNOWGUNS[0].perM), 0); if (G.cash < c) return this.toast('Not enough cash.', 'bad'); World.spend(c, 'construction'); list.forEach(r => { r.snowmaking = true; r.smOn = true; r.smTier = 1; }); World.log(`💧 Snowmaking installed on ${list.length} runs (${U.money(c)}).`, 'build'); this.renderPanel(); };
@@ -465,12 +465,12 @@ const UI = {
     h += '</div>';
     const w = Weather.today();
     h += `<h3>📋 Today</h3><div class="card">
-      <div class="kv"><span>Base depth</span><b>${Math.round(G.baseDepth)} cm</b></div>
-      <div class="kv"><span>Season snowfall</span><b>${Math.round(G.seasonSnow)} cm</b></div>
+      <div class="kv"><span>Base depth</span><b>${U.inch(G.baseDepth)}</b></div>
+      <div class="kv"><span>Season snowfall</span><b>${U.inch(G.seasonSnow)}</b></div>
       <div class="spark" data-modal="weather" title="Open the snow report">${this.snowChart(300, 110)}</div>
       <div class="kv"><span>Avalanche danger</span><b class="avy${G.avy.danger}">${['', 'Low', 'Moderate', 'Considerable', 'High', 'Extreme'][G.avy.danger]} (${G.avy.danger})</b></div>
-      <div class="kv"><span>Weather</span><b>${Weather.icon(w)} ${Weather.label(w)} ${w.tHi}°/${w.tLo}°C</b></div>
-      <div class="kv"><span>Wind / gusts</span><b>${w.wind} / ${w.gust} m/s</b></div>
+      <div class="kv"><span>Weather</span><b>${Weather.icon(w)} ${Weather.label(w)} ${U.Fn(w.tHi)}°/${U.F(w.tLo)}</b></div>
+      <div class="kv"><span>Wind / gusts</span><b>${U.mph(w.wind)} / ${U.mph(w.gust)}</b></div>
       <p class="hint">${Weather.stormOutlook()}</p></div>`;
     if (G.reviews.length) { h += `<h3>💬 Recent Reviews</h3>`; for (const r of G.reviews.slice(0, 4)) h += `<div class="review"><span class="stars">${r.s}</span> ${r.t}</div>`; }
     return h;
@@ -484,9 +484,9 @@ const UI = {
       <div class="card">
       <div class="kv"><span>Rating</span><b>${D.name}${e.park ? ' · Terrain Park' : ''}</b></div>
       <div class="kv"><span>Status</span><b class="${Sim.runIsOpen(e) ? 'ok' : 'bad'}">${Sim.runIsOpen(e) ? 'OPEN' : e.avyClosed ? 'Avalanche closure' : !e.reachable ? 'Not lift-served' : Sim.runDepth(e) < 30 ? 'Not enough snow' : 'Closed'}</b></div>
-      <div class="kv"><span>Length / vertical</span><b>${Math.round(e.len)} m / ${Math.round(e.vert)} m</b></div>
+      <div class="kv"><span>Length / vertical</span><b>${U.ft(e.len)} / ${U.ft(e.vert)}</b></div>
       <div class="kv"><span>Avg / max pitch</span><b>${Math.round(e.avgPitch)}% / ${Math.round(e.maxPitch)}%</b></div>
-      <div class="kv"><span>Snow depth</span><b>${Sim.runDepth(e)} cm${e.smDepth > 0 ? ` (${Math.round(e.smDepth)} man-made)` : ''}</b></div>
+      <div class="kv"><span>Snow depth</span><b>${U.inch(Sim.runDepth(e))}${e.smDepth > 0 ? ` (${U.inN(e.smDepth)} in man-made)` : ''}</b></div>
       <div class="kv"><span>Surface</span><b>${Sim.surfaceLabel(e)}</b></div>
       <div class="bar"><i style="width:${cond * 100}%;background:${cond > 0.7 ? '#2ecc40' : cond > 0.4 ? '#f1c40f' : '#e74c3c'}"></i></div>
       <div class="kv"><span>Snowmaking</span><b>${e.snowmaking ? (e.smOn ? '💧 ON' : 'off') + ' · ' + SNOWGUNS[(e.smTier || 1) - 1].short : 'none'}</b></div>
@@ -506,12 +506,12 @@ const UI = {
       h += `<h3>🚡 <input id="selName" value="${e.name}"></h3><div class="card">
       <div class="kv"><span>Type</span><b>${L.name}</b></div>
       <div class="kv"><span>Status</span><b class="${Sim.liftIsOpen(e) ? 'ok' : 'bad'}">${e.buildDays > 0 ? '🏗 Under construction (' + e.buildDays + ' days)' : e.broken ? '🛑 Broken down' : e.holdFrac >= 1 ? '💨 Wind hold' : e.open ? 'Operating' : 'Closed'}</b></div>
-      <div class="kv"><span>Length / vertical</span><b>${Math.round(e.len)} m / ${Math.round(e.vert)} m</b></div>
+      <div class="kv"><span>Length / vertical</span><b>${U.ft(e.len)} / ${U.ft(e.vert)}</b></div>
       <div class="kv"><span>Ride time</span><b>${(e.len / L.speed / 60).toFixed(1)} min</b></div>
       <div class="kv"><span>Capacity</span><b>${L.cap.toLocaleString()} skiers/hr</b></div>
       <div class="kv"><span>Lift line now</span><b>${Math.round(e.wait || 0)} min (${Math.round((e.util || 0) * 100)}% utilization)</b></div>
       <div class="kv"><span>Rides today</span><b>${Math.round(e.ridesToday || 0).toLocaleString()}</b></div>
-      <div class="kv"><span>Wind limit</span><b>${L.wind} m/s</b></div>
+      <div class="kv"><span>Wind limit</span><b>${U.mph(L.wind)}</b></div>
       <div class="kv"><span>Crew</span><b>${L.ops} lift ops</b></div>
       <div class="kv"><span>Daily maint. + power</span><b>~${U.money(L.maint + L.kw * 7 * 0.15)}</b></div>
       <div class="kv"><span>Runs from top</span><b>${(e.topRuns || []).length}</b></div>
@@ -524,7 +524,7 @@ const UI = {
       <div class="kv"><span>Level</span><b>${e.level} / ${B.levels.length}</b></div>
       ${e.buildDays > 0 ? `<div class="kv"><span>Construction</span><b>🏗 ${e.buildDays} days left</b></div>` : ''}
       <div class="kv"><span>Upkeep</span><b>${U.money(lv.upkeep)}/day</b></div>
-      ${Object.entries(lv).filter(([k]) => !['cost', 'days', 'upkeep'].includes(k)).map(([k, v]) => `<div class="kv"><span>${{ cap: 'Ticket capacity/day', seats: 'Seats', cars: 'Parking spaces', rentals: 'Rentals/day', students: 'Students/day', staff: 'Staff needed', resp: 'Response factor', bays: 'Vehicle bays', km: 'Snowmaking km', rooms: 'Rooms', dogs: 'Dog capacity', kids: 'Kids/day', riders: 'Bus riders/day', morale: 'Staff morale bonus' }[k] || k}</span><b>${typeof v === 'number' ? v.toLocaleString() : v}</b></div>`).join('')}
+      ${Object.entries(lv).filter(([k]) => !['cost', 'days', 'upkeep'].includes(k)).map(([k, v]) => `<div class="kv"><span>${{ cap: 'Ticket capacity/day', seats: 'Seats', cars: 'Parking spaces', rentals: 'Rentals/day', students: 'Students/day', staff: 'Staff needed', resp: 'Response factor', bays: 'Vehicle bays', km: 'Snowmaking capacity', rooms: 'Rooms', dogs: 'Dog capacity', kids: 'Kids/day', riders: 'Bus riders/day', morale: 'Staff morale bonus' }[k] || k}</span><b>${k === 'km' ? U.mi(v) : typeof v === 'number' ? v.toLocaleString() : v}</b></div>`).join('')}
       </div>${next ? `<button class="btn primary" data-act="upgrade">⬆ Upgrade to L${e.level + 1} — ${U.money(next.cost)}</button>` : '<p class="hint">Fully upgraded.</p>'}`;
       if (e.kind === 'garage') h += `<button class="btn" data-modal="fleet">🚜 Open Fleet</button>`;
       if (e.kind === 'patrolhq' || e.kind === 'kennel') h += `<button class="btn" data-modal="patrol">⛑️ Patrol & Dogs</button>`;
@@ -550,13 +550,13 @@ const UI = {
     $('#date').textContent = World.dateStr();
     $('#clock').textContent = G.phase === 'drive' ? '🌙 ' + Sim.clockStr() : Sim.clockStr();
     const w = Weather.today();
-    $('#wx').textContent = `${Weather.icon(w)} ${w.tHi}°C ${w.snowNight ? '❄' + w.snowNight + 'cm' : ''}`;
-    $('#wx').title = `${Weather.label(w)} · wind ${w.wind} m/s (gusts ${w.gust}) · base ${Math.round(G.baseDepth)} cm`;
+    $('#wx').textContent = `${Weather.icon(w)} ${U.F(w.tHi)} ${w.snowNight ? '❄' + U.inN(w.snowNight) + '"' : ''}`;
+    $('#wx').title = `${Weather.label(w)} · wind ${U.mph(w.wind)} (gusts ${U.mph(w.gust)}) · base ${U.inch(G.baseDepth)}`;
     $('#guests').textContent = Sim.operating() ? `${Math.round(Sim.onHill()).toLocaleString()} / ${(T.visitors || 0).toLocaleString()}` : (G.seasonOpen ? 'Closed' : 'Pre-season');
     $('#rep').textContent = `${Math.round(G.reputation)}`;
     const last = G.history.filter(h => h.visitors > 0).pop();
     $('#happy').textContent = last ? `${last.sat >= 70 ? '😀' : last.sat >= 50 ? '🙂' : '😟'} ${last.sat}%` : '–';
-    $('#depth').textContent = `${Math.round(G.baseDepth)}cm`;
+    $('#depth').textContent = U.inch(G.baseDepth);
     $('#btnOpen').style.display = G.seasonOpen ? 'none' : '';
     document.querySelectorAll('[data-speed]').forEach(b => b.classList.toggle('on', +b.dataset.speed === G.speed));
     document.querySelectorAll('[data-speed3]').forEach(b => b.classList.toggle('on', +b.dataset.speed3 === G.speed));
@@ -679,10 +679,10 @@ const UI = {
     if (!G.groomers.length) h += '<p class="dim">No groomers yet.</p>';
     for (const g of G.groomers) {
       const M = GROOMERS[g.kind];
-      h += `<div class="item"><div class="row"><b><span class="swatch" style="background:${M.color}"></span>${g.name} — ${M.name}</b><span>${Math.round(g.hours || 0)} engine hrs</span></div><small>${M.width} m tiller · ${M.winch ? '🪝 winch' : 'no winch'} · ${M.park ? '🛹 park tools' : ''} · ~${(Grooming.machineCapacity(g) * CELL * CELL / 10000).toFixed(1)} ha/night</small> <button class="sbtn" data-sell="${g.id}">Sell (40%)</button></div>`;
+      h += `<div class="item"><div class="row"><b><span class="swatch" style="background:${M.color}"></span>${g.name} — ${M.name}</b><span>${Math.round(g.hours || 0)} engine hrs</span></div><small>${U.ft(M.width)} tiller · ${M.winch ? '🪝 winch' : 'no winch'} · ${M.park ? '🛹 park tools' : ''} · ~${U.ac(Grooming.machineCapacity(g) * CELL * CELL / 10000, 0)}/night</small> <button class="sbtn" data-sell="${g.id}">Sell (40%)</button></div>`;
     }
     h += `<h4>Buy a groomer</h4><div class="list">`;
-    for (const k in GROOMERS) { const M = GROOMERS[k]; h += `<div class="item"><div class="row"><b><span class="swatch" style="background:${M.color}"></span>${M.name}</b><button class="btn small" data-buyg="${k}">Buy ${U.money(M.price)}</button></div><small>${M.width} m tiller · ${Math.round(M.speed * 3.6 * 0.6)} km/h grooming · max ${M.winch ? '100' : M.maxSlope}% pitch · ${M.fuel} L/h${M.winch ? ' · 🪝 WINCH' : ''}${M.park ? ' · 🛹 PARK' : ''}</small><small class="dim">${M.desc}</small></div>`; }
+    for (const k in GROOMERS) { const M = GROOMERS[k]; h += `<div class="item"><div class="row"><b><span class="swatch" style="background:${M.color}"></span>${M.name}</b><button class="btn small" data-buyg="${k}">Buy ${U.money(M.price)}</button></div><small>${U.ft(M.width)} tiller · ${U.mph(M.speed * 0.6)} grooming · max ${M.winch ? '100' : M.maxSlope}% pitch · ${(M.fuel * 0.264).toFixed(1)} gal/h${M.winch ? ' · 🪝 WINCH' : ''}${M.park ? ' · 🛹 PARK' : ''}</small><small class="dim">${M.desc}</small></div>`; }
     h += `</div><h4>Snowmobiles & UTVs</h4>`;
     for (const s of G.sleds) h += `<div class="item"><div class="row"><b>🛷 ${SNOWMOBILES[s.kind].name}</b><button class="sbtn" data-sells="${s.id}">Sell</button></div></div>`;
     h += '<div class="list">';
@@ -813,12 +813,12 @@ const UI = {
     let s = `<svg viewBox="0 0 ${w} ${hgt}" class="chart" role="img" aria-label="Snow depth chart">`;
     const step = maxD > 300 ? 100 : maxD > 120 ? 50 : 25;
     for (let v = 0; v <= maxD; v += step) s += `<line x1="${pad.l}" x2="${w - pad.r}" y1="${yD(v)}" y2="${yD(v)}" stroke="#2a3b50" stroke-width="1"/><text x="${pad.l - 6}" y="${yD(v) + 4}" text-anchor="end" fill="#8fa3b8" font-size="10">${v}</text>`;
-    s += `<line x1="${pad.l}" x2="${w - pad.r}" y1="${yD(30)}" y2="${yD(30)}" stroke="#f5b700" stroke-dasharray="4 4"/><text x="${w - pad.r - 4}" y="${yD(30) - 4}" text-anchor="end" fill="#f5b700" font-size="10">30 cm needed to open</text>`;
-    H.forEach((d, i) => { if (d.snow > 0) s += `<rect x="${x(i) - bw / 2}" y="${yS(d.snow)}" width="${bw}" height="${pad.t + ih - yS(d.snow)}" fill="#7cc4ff" opacity="0.55"><title>${d.date}: ${d.snow} cm new snow</title></rect>`; });
+    s += `<line x1="${pad.l}" x2="${w - pad.r}" y1="${yD(30)}" y2="${yD(30)}" stroke="#f5b700" stroke-dasharray="4 4"/><text x="${w - pad.r - 4}" y="${yD(30) - 4}" text-anchor="end" fill="#f5b700" font-size="10">12 in needed to open</text>`;
+    H.forEach((d, i) => { if (d.snow > 0) s += `<rect x="${x(i) - bw / 2}" y="${yS(d.snow)}" width="${bw}" height="${pad.t + ih - yS(d.snow)}" fill="#7cc4ff" opacity="0.55"><title>${d.date}: ${U.inch(d.snow)} new snow</title></rect>`; });
     const pts = H.map((d, i) => `${x(i)},${yD(d.depth)}`).join(' ');
     s += `<polygon points="${pad.l},${pad.t + ih} ${pts} ${x(H.length - 1)},${pad.t + ih}" fill="#ffffff" opacity="0.10"/>`;
     s += `<polyline points="${pts}" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linejoin="round"/>`;
-    const L = H[H.length - 1]; s += `<circle cx="${x(H.length - 1)}" cy="${yD(L.depth)}" r="4" fill="#fff"/><text x="${x(H.length - 1) - 6}" y="${yD(L.depth) - 8}" text-anchor="end" fill="#fff" font-size="11" font-weight="700">${L.depth} cm</text>`;
+    const L = H[H.length - 1]; s += `<circle cx="${x(H.length - 1)}" cy="${yD(L.depth)}" r="4" fill="#fff"/><text x="${x(H.length - 1) - 6}" y="${yD(L.depth) - 8}" text-anchor="end" fill="#fff" font-size="11" font-weight="700">${U.inch(L.depth)}</text>`;
     H.forEach((d, i) => { if (i % Math.ceil(H.length / 7) === 0) s += `<text x="${x(i)}" y="${hgt - 8}" text-anchor="middle" fill="#8fa3b8" font-size="10">${d.date.split(',')[0].slice(4)}</text>`; });
     for (let v = 0; v <= maxS; v += maxS > 60 ? 20 : 10) s += `<text x="${w - pad.r + 6}" y="${yS(v) + 4}" fill="#7cc4ff" font-size="10">${v}</text>`;
     s += `</svg>${note}<p class="legend"><span class="lw"></span> Base depth (cm, left)  <span class="lb"></span> New snow per day (cm, right)  <span class="ly"></span> Opening depth</p>`;
@@ -828,11 +828,11 @@ const UI = {
     let h = this.head('🌨️ Weather & Snow Report') + `<h4>❄️ Snow depth this season</h4>${this.snowChart()}<p><b>Storm outlook:</b> ${Weather.stormOutlook()}</p><div class="fc">`;
     G.wx.slice(0, 7).forEach((d, k) => {
       const dt = World.date(d.dayNum);
-      h += `<div class="fday ${d.storm ? 'storm' : ''}"><b>${k === 0 ? 'Today' : DOW[dt.getUTCDay()]}</b><div class="fi">${Weather.icon(d)}</div><small>${Weather.label(d)}</small><div>${d.tHi}° / ${d.tLo}°</div><div>❄ ${Weather.forecastText(d, k)}</div><small>💨 ${k < 3 ? d.wind : '~' + Math.round(d.wind / 5) * 5} m/s</small></div>`;
+      h += `<div class="fday ${d.storm ? 'storm' : ''}"><b>${k === 0 ? 'Today' : DOW[dt.getUTCDay()]}</b><div class="fi">${Weather.icon(d)}</div><small>${Weather.label(d)}</small><div>${U.Fn(d.tHi)}° / ${U.Fn(d.tLo)}°F</div><div>❄ ${Weather.forecastText(d, k)}</div><small>💨 ${k < 3 ? U.mph(d.wind) : '~' + Math.round(d.wind * 2.237 / 5) * 5 + ' mph'}</small></div>`;
     });
-    h += `</div><div class="grid2"><div class="card"><h4>Snowpack</h4><div class="kv"><span>Mid-mountain base</span><b>${Math.round(G.baseDepth)} cm</b></div><div class="kv"><span>Season total</span><b>${Math.round(G.seasonSnow)} cm</b></div><div class="kv"><span>Surface</span><b>${G.icy > 0.5 ? 'Firm / icy' : 'Packed powder'}</b></div></div>
+    h += `</div><div class="grid2"><div class="card"><h4>Snowpack</h4><div class="kv"><span>Mid-mountain base</span><b>${U.inch(G.baseDepth)}</b></div><div class="kv"><span>Season total</span><b>${U.inch(G.seasonSnow)}</b></div><div class="kv"><span>Surface</span><b>${G.icy > 0.5 ? 'Firm / icy' : 'Packed powder'}</b></div></div>
     <div class="card"><h4>How weather works</h4><small class="dim">Storms arrive in cycles (clippers, Pacific storms, upslope events and atmospheric rivers). Snow piles up as powder on runs until groomed or skied off. High winds trigger lift <b>wind holds</b> — T-bars and Funitels resist wind best. Warm days melt the base and refreeze to ice. Big storms raise avalanche danger.</small></div></div>`;
-    h += `<h4>Run conditions</h4><table class="tbl"><tr><th>Run</th><th>Depth</th><th>Surface</th><th>Groom</th></tr>${G.runs.map(r => `<tr><td>${DIFF[r.diff].icon} ${r.name}</td><td>${Sim.runDepth(r)} cm</td><td>${Sim.surfaceLabel(r)}</td><td>${r.groomPlan}</td></tr>`).join('')}</table>`;
+    h += `<h4>Run conditions</h4><table class="tbl"><tr><th>Run</th><th>Depth</th><th>Surface</th><th>Groom</th></tr>${G.runs.map(r => `<tr><td>${DIFF[r.diff].icon} ${r.name}</td><td>${U.inch(Sim.runDepth(r))}</td><td>${Sim.surfaceLabel(r)}</td><td>${r.groomPlan}</td></tr>`).join('')}</table>`;
     return h;
   },
 
@@ -846,7 +846,7 @@ const UI = {
     for (const k in S) h += `<div class="kv"><span>${names[k]}</span><b>${Math.round(S[k])}</b></div><div class="bar"><i style="width:${S[k]}%;background:${S[k] > 70 ? '#2ecc71' : S[k] > 45 ? '#f1c40f' : '#e74c3c'}"></i></div>`;
     h += `</div><div class="card"><div class="kv"><span>Overall (last day)</span><b>${T ? T.sat : '–'}</b></div><div class="kv"><span>Reputation</span><b>${Math.round(G.reputation)}</b></div><h4>Reviews</h4>${G.reviews.slice(0, 10).map(r => `<div class="review"><span class="stars">${r.s}</span> ${r.t}</div>`).join('')}</div></div>`;
     const km = Sim.openKmBy();
-    h += `<h4>Open terrain</h4><p>● ${km.green.toFixed(1)} km · ■ ${km.blue.toFixed(1)} km · ◆ ${km.black.toFixed(1)} km · ◆◆ ${km.dblack.toFixed(1)} km</p><p class="hint">Guest mix: 22% beginners, 43% intermediates, 25% advanced, 10% experts. Each group wants enough terrain at their level.</p>`;
+    h += `<h4>Open terrain</h4><p>● ${U.mi(km.green)} · ■ ${U.mi(km.blue)} · ◆ ${U.mi(km.black)} · ◆◆ ${U.mi(km.dblack)}</p><p class="hint">Guest mix: 22% beginners, 43% intermediates, 25% advanced, 10% experts. Each group wants enough terrain at their level.</p>`;
     return h;
   },
 
@@ -872,7 +872,7 @@ const UI = {
         <p>At the end of each day choose <b>🚜 Drive a groomer tonight</b> to do it yourself:<br><b>W / S</b> drive forward / back · <b>A / D</b> steer · <b>Space</b> tiller on/off · <b>B</b> blade (flattens big bumps) · <b>E</b> winch (steep runs).</p>
         <p>Orange dots mark the run edges in the dark, and the minimap shows what still needs grooming (red). Very steep runs need a <b>winch</b> snowcat, which you can buy in 🚜 Fleet.</p>
         <p>Don't want to choose every evening? Turn on <b>Auto night grooming</b> in 🚜 Fleet (or tick the box on the end-of-day screen) and the crew grooms every night automatically.</p>`,
-      snow: `<p>Runs need <b>30 cm of snow</b> to open. Storms bring fresh powder, and powder days bring big crowds.</p>
+      snow: `<p>Runs need <b>12 inches of snow</b> to open. Storms bring fresh powder, and powder days bring big crowds.</p>
         <p>The 🌨️ Weather screen shows a 7-day forecast. Warm days melt snow. A <b>Pump House</b> plus snowmaking on your runs adds snow on cold nights.</p>`,
       money: `<p>You earn money from lift tickets, season passes, rentals, food and more. Your biggest costs are staff wages and lift power.</p>
         <p><b>Happiness</b> (top bar) is how much guests liked their day. Keep lift lines short, runs groomed and have enough food seats. Happy guests raise your <b>Reputation</b>, which brings more guests.</p>
@@ -904,7 +904,7 @@ const UI = {
     } else {
       h += `<p>${G.seasonOpen ? (T.closedReason || 'The resort did not operate today.') : 'Pre-season. Keep building! Build a lift and a run, then click 🎿 Open for Season at the top.'}</p><div class="card">${this.breakdown(T)}</div>`;
     }
-    if (tom) h += `<p class="hint"><b>Tonight / tomorrow:</b> ${Weather.icon(tom)} ${Weather.label(tom)}, low ${tom.tLo}°C${tom.snowNight ? `, ${Weather.forecastText(tom, 1)} overnight` : ''}. ${Weather.stormOutlook()}</p>`;
+    if (tom) h += `<p class="hint"><b>Tonight / tomorrow:</b> ${Weather.icon(tom)} ${Weather.label(tom)}, low ${U.F(tom.tLo)}${tom.snowNight ? `, ${Weather.forecastText(tom, 1)} overnight` : ''}. ${Weather.stormOutlook()}</p>`;
     h += `<div class="night"><h4>🌙 Night shift</h4>`;
     if (G.groomers.length) {
       h += `<label>Drive yourself: <select id="driveSel">${G.groomers.map(g => `<option value="${g.id}">${g.name} — ${GROOMERS[g.kind].name}</option>`).join('')}</select></label>
@@ -942,7 +942,7 @@ const UI = {
   m_season(S) {
     return `<div class="mhead"><h2>🏁 Season ${G.seasonNum} Complete!</h2></div>
     <div class="grid3"><div class="stat"><small>Skier visits</small><b>${S.visitors.toLocaleString()}</b></div><div class="stat"><small>Revenue</small><b class="ok">${U.money(S.revenue)}</b></div><div class="stat"><small>Profit</small><b class="${S.revenue - S.expense >= 0 ? 'ok' : 'bad'}">${U.money(S.revenue - S.expense)}</b></div></div>
-    <div class="card"><div class="kv"><span>Season snowfall</span><b>${Math.round(G.seasonSnow)} cm</b></div><div class="kv"><span>Reputation</span><b>${Math.round(G.reputation)}</b></div><div class="kv"><span>Patrol incidents</span><b>${S.incidents}</b></div><div class="kv"><span>Avalanche rescues</span><b>${S.rescues}</b></div></div>
+    <div class="card"><div class="kv"><span>Season snowfall</span><b>${U.inch(G.seasonSnow)}</b></div><div class="kv"><span>Reputation</span><b>${Math.round(G.reputation)}</b></div><div class="kv"><span>Patrol incidents</span><b>${S.incidents}</b></div><div class="kv"><span>Avalanche rescues</span><b>${S.rescues}</b></div></div>
     <p>Summer is here. Crews will maintain the lifts and the hotel & gondola run summer operations. Next season starts in early November.</p>
     <button class="btn primary" id="next">☀️ Skip summer → Season ${G.seasonNum + 1}</button>`;
   },
@@ -956,10 +956,10 @@ const UI = {
     const ci = Terrain.cellAt(D.x, D.y);
     let onRun = null; for (const r of G.runs) if (r.cells.includes(ci)) { onRun = r; break; }
     $('#dhStats').innerHTML = `<b>${M.name}</b> · ${Sim.clockStr()}<br>
-      Speed <b>${(Math.abs(D.v) * 3 * 3.6 / 3).toFixed(1)} km/h</b> · Grade <b>${Math.round(Terrain.slope[ci] || 0)}%</b><br>
+      Speed <b>${U.mph(Math.abs(D.v))}</b> · Grade <b>${Math.round(Terrain.slope[ci] || 0)}%</b><br>
       Fuel <span class="fuel"><i style="width:${D.fuel * 100}%"></i></span><br>
       Tiller <b class="${D.tiller ? 'ok' : ''}">${D.tiller ? 'DOWN' : 'UP'}</b> · Blade <b class="${D.blade ? 'ok' : ''}">${D.blade ? 'DOWN' : 'UP'}</b> ${M.winch ? `· Winch <b class="${D.winch ? 'ok' : ''}">${D.winch ? 'ON' : 'OFF'}</b>` : ''}<br>
-      Groomed <b>${(D.cells * CELL * CELL / 10000).toFixed(2)} ha</b><br>
+      Groomed <b>${U.ac(D.cells * CELL * CELL / 10000, 2)}</b><br>
       ${onRun ? `On: ${DIFF[onRun.diff].icon} <b>${onRun.name}</b> (${Sim.surfaceLabel(onRun)})` : '<span class="dim">Off-piste</span>'}`;
     $('#dhMsg').textContent = D.msgT > 0 ? D.msg : '';
   },

@@ -130,8 +130,8 @@ const World = {
   validateRun(points, width) {
     if (points.length < 2) return { ok: false, err: 'Click at least 2 points (top → bottom).' };
     const info = this.analyzeRun(points, width);
-    if (info.len < 120) return { ok: false, err: 'Run is too short (min 120 m).', info };
-    if (info.vert < 10) return { ok: false, err: 'Runs must drop at least 10 m. Draw from top to bottom.', info };
+    if (info.len < 120) return { ok: false, err: 'Run is too short (min 400 ft).', info };
+    if (info.vert < 10) return { ok: false, err: 'Runs must drop at least 33 ft. Draw from top to bottom.', info };
     if (info.uphill > 8) return { ok: false, err: 'Part of this run goes uphill — skiers can\'t climb.', info };
     if (info.cells.some(i => Terrain.water[i] === 2)) return { ok: false, err: 'Runs can\'t cross the pond.', info };
     const cost = this.runCost(info, width);
@@ -168,7 +168,7 @@ const World = {
     run.avgElev = info.samples.reduce((a, s) => a + s.h, 0) / info.samples.length;
     G.runs.push(run);
     this.rebuildNetwork();
-    this.log(`New trail cut: ${DIFF[run.diff].icon} ${run.name} (${Math.round(run.len)} m, ${Math.round(run.vert)} m vert) for ${U.money(v.cost.total)}`, 'build');
+    this.log(`New trail cut: ${DIFF[run.diff].icon} ${run.name} (${U.ft(run.len)}, ${U.ft(run.vert)} vert) for ${U.money(v.cost.total)}`, 'build');
     return { ok: true, run };
   },
   removeRun(run) {
@@ -183,8 +183,8 @@ const World = {
     const ha = Terrain.heightAt(a.x, a.y), hb = Terrain.heightAt(b.x, b.y);
     const len = U.dist(a, b), vert = hb - ha;
     if (len < 40) return { ok: false, err: 'Too short.' };
-    if (len > T.maxLen) return { ok: false, err: `Max length for ${T.name} is ${T.maxLen} m (this is ${Math.round(len)} m).` };
-    if (vert > T.maxVert) return { ok: false, err: `Max vertical is ${T.maxVert} m (this is ${Math.round(vert)} m).` };
+    if (len > T.maxLen) return { ok: false, err: `Max length for ${T.name} is ${U.ft(T.maxLen)} (this is ${U.ft(len)}).` };
+    if (vert > T.maxVert) return { ok: false, err: `Max vertical is ${U.ft(T.maxVert)} (this is ${U.ft(vert)}).` };
     if (vert < (type === 'carpet' ? -2 : 10)) return { ok: false, err: 'The top terminal must be uphill of the bottom terminal.' };
     if (T.cat === 'Surface') {
       // surface lifts need a skiable grade along the line
@@ -216,7 +216,7 @@ const World = {
     for (let k = 1; k < nT; k++) lift.towers.push(k / nT);
     G.lifts.push(lift);
     this.rebuildNetwork();
-    this.log(`Construction started: ${T.name} "${lift.name}" — ${Math.round(v.len)} m, ${Math.round(v.vert)} m vertical. Ready in ${T.days} day(s).`, 'build');
+    this.log(`Construction started: ${T.name} "${lift.name}" — ${U.ft(v.len)}, ${U.ft(v.vert)} vertical. Ready in ${T.days} day(s).`, 'build');
     return { ok: true, lift };
   },
   removeLift(l) { G.lifts = G.lifts.filter(x => x !== l); this.rebuildNetwork(); },

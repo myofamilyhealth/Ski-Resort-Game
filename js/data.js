@@ -75,7 +75,7 @@ const BUILDINGS = {
               desc: 'Required to own groomers & snowmobiles. Bays = vehicle capacity.' },
   pumphouse:{ name: 'Snowmaking Pump House', icon: '💧', color: '#5dade2', r: 12, levels: [
               { cost: 900000, days: 4, upkeep: 200, km: 3 }, { cost: 1100000, days: 4, upkeep: 300, km: 7 }, { cost: 1800000, days: 5, upkeep: 420, km: 14 }],
-              desc: 'Powers snow guns. Level = km of trail it can supply.' },
+              desc: 'Powers snow guns. Each level supplies more miles of trail.' },
   hotel:    { name: 'Slopeside Hotel', icon: '🏨', color: '#8e44ad', r: 22, levels: [
               { cost: 4500000, days: 8, upkeep: 900, rooms: 60 }, { cost: 5500000, days: 8, upkeep: 1600, rooms: 160 }, { cost: 9000000, days: 10, upkeep: 2600, rooms: 320 }],
               desc: 'Overnight guests ($260/night) who ski every day.' },
@@ -202,9 +202,9 @@ const MONTH_STORM = { 9: 0.12, 10: 0.22, 11: 0.3, 0: 0.3, 1: 0.3, 2: 0.27, 3: 0.
 
 // Snowmaking gun systems (per run). install/upgrade cost is per meter of trail.
 const SNOWGUNS = [
-  { name: 'Basic Fan Guns', short: 'Basic', perM: 185, temp: -3, out: 1.0, cost: 1.0, crew: 1.0, desc: 'Manual fan guns. Need -3°C or colder.' },
-  { name: 'Automated Fan Guns', short: 'Automated', perM: 120, temp: -2, out: 1.4, cost: 0.85, crew: 0.7, desc: 'Weather-sensing guns. Work at -2°C, 40% more snow, fewer crew.' },
-  { name: 'Low-Energy Tower Guns', short: 'Tower', perM: 160, temp: -1, out: 1.8, cost: 0.65, crew: 0.5, desc: 'Top-of-the-line towers. Work at -1°C, 80% more snow, cheapest to run.' },
+  { name: 'Basic Fan Guns', short: 'Basic', perM: 185, temp: -3, out: 1.0, cost: 1.0, crew: 1.0, desc: 'Manual fan guns. Need 27°F or colder.' },
+  { name: 'Automated Fan Guns', short: 'Automated', perM: 120, temp: -2, out: 1.4, cost: 0.85, crew: 0.7, desc: 'Weather-sensing guns. Work at 28°F, 40% more snow, fewer crew.' },
+  { name: 'Low-Energy Tower Guns', short: 'Tower', perM: 160, temp: -1, out: 1.8, cost: 0.65, crew: 0.5, desc: 'Top-of-the-line towers. Work at 30°F, 80% more snow, cheapest to run.' },
 ];
 
 // Mountains you can buy at the start. Terrain is generated from these settings.

@@ -20,6 +20,16 @@ const U = {
     while (v === 0) v = Math.random();
     return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
   },
+  // ---- US display units (the simulation runs in metric internally) ----
+  ft: (m) => Math.round(m * 3.28084).toLocaleString() + ' ft',
+  mi: (km, d = 1) => (km * 0.621371).toFixed(d) + ' mi',
+  inch: (cm) => Math.round(cm / 2.54) + ' in',
+  inN: (cm) => Math.round(cm / 2.54),
+  F: (c) => Math.round(c * 9 / 5 + 32) + '°F',
+  Fn: (c) => Math.round(c * 9 / 5 + 32),
+  mph: (ms) => Math.round(ms * 2.23694) + ' mph',
+  kmh2mph: (k) => Math.round(k * 0.621371) + ' mph',
+  ac: (ha, d = 1) => (ha * 2.47105).toFixed(d) + ' acres',
   money(v) {
     const neg = v < 0; v = Math.abs(v);
     let s;

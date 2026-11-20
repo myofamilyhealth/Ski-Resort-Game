@@ -46,7 +46,7 @@ const Grooming = {
     if (used.length) World.spend(fuel, 'grooming');
     const ha = groomed * CELL * CELL / 10000;
     if (used.length && groomed === 0 && !skippedSteep) World.log(`🚜 Night crew: all runs already in good shape. Fuel & wear ${U.money(fuel)}.`, 'info');
-    else if (used.length) World.log(`🚜 Night crew: ${used.length} cat${used.length > 1 ? 's' : ''} groomed ${ha.toFixed(1)} ha (${full}/${runs.length} runs fully done${skippedSteep ? `; ${(skippedSteep * CELL * CELL / 10000).toFixed(1)} ha too steep without a winch cat` : ''}). Fuel & wear ${U.money(fuel)}.${tonight > 5 ? ' Snowing hard — corduroy will be under fresh snow.' : ''}`, skippedSteep > 50 ? 'warn' : 'info');
+    else if (used.length) World.log(`🚜 Night crew: ${used.length} cat${used.length > 1 ? 's' : ''} groomed ${U.ac(ha)} (${full}/${runs.length} runs fully done${skippedSteep ? `; ${U.ac(skippedSteep * CELL * CELL / 10000)} too steep without a winch cat` : ''}). Fuel & wear ${U.money(fuel)}.${tonight > 5 ? ' Snowing hard — corduroy will be under fresh snow.' : ''}`, skippedSteep > 50 ? 'warn' : 'info');
     else if (G.runs.length && G.groomers.length && !G.staff.groomer) World.log('🚜 No groomer operators hired — nothing was groomed tonight!', 'warn');
     else if (G.runs.length && !G.groomers.length) World.log('🚜 You own no groomers. Runs are getting bumpy — buy a snowcat (Fleet).', 'warn');
     return { groomed, parkDone };
@@ -156,7 +156,7 @@ const Drive = {
     this.active = false;
     const ha = this.cells * CELL * CELL / 10000;
     World.spend(GROOMERS[this.g.kind].fuel * (1 - this.fuel) * 8 * 1.25, 'grooming');
-    World.log(`🚜 ${reason || 'You parked the cat.'} You groomed ${ha.toFixed(2)} ha of trail yourself in the ${this.M.name}.`, 'good');
+    World.log(`🚜 ${reason || 'You parked the cat.'} You groomed ${U.ac(ha, 2)} of trail yourself in the ${this.M.name}.`, 'good');
     if (ha > 1.5) { G.reputation = U.clamp(G.reputation + Math.min(2, ha / 4), 0, 100); World.log('Guests will notice that hand-laid corduroy tomorrow. ⭐', 'good'); }
     UI.exitDrive();
     G.time = 18 * 60;

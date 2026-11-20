@@ -206,7 +206,7 @@ const Terrain = {
       let lastX = -99;
       for (let x = 1; x < MAP_W - 1; x++) {
         const a = Math.floor(this.e(x, y) / 100), bb = Math.floor(this.e(x + 1, y) / 100);
-        if (a !== bb && x - lastX > 40 && !this.water[y * MAP_W + x]) { ctx.fillText(Math.max(a, bb) * 100 + ' m', (x + 1) * PX, y * PX + 3); lastX = x; }
+        if (a !== bb && x - lastX > 40 && !this.water[y * MAP_W + x]) { ctx.fillText(U.ft(Math.max(a, bb) * 100), (x + 1) * PX, y * PX + 3); lastX = x; }
       }
     }
     ctx.textAlign = 'left';
