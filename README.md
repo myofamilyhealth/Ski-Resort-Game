@@ -9,8 +9,8 @@ Nothing to install. Open `index.html` in Chrome, Edge, Firefox or Safari (a comp
 ## How it plays
 
 1. **Choose a mountain.** Pick Cedar Basin (gentle and cheap), Silver Creek Valley (balanced) or Granite Peak (huge and steep). Fly over each one in 3D, buy one and name your resort.
-2. **Your office.** You start inside your office on a bare mountain. Walk to the desk and press **E** to open the Resort Manager.
-3. **Build** a ticket office, lodge, parking, lifts, runs and the village. Everything appears in the 3D world, which always matches the manager map.
+2. **Your office.** You start inside your office next to a small starter village (ticket office, lodge, parking, rentals, patrol, and a maintenance shop with one snowcat). Walk to the desk and press **E** to open the Resort Manager.
+3. **Build** your first lift and runs, then grow the village. Everything appears in the 3D world, which always matches the manager map.
 4. **Watch construction.** Helicopters fly towers in for chairlifts, tower cranes build gondola and tram stations, and excavators dig for surface lifts.
 5. **Go outside** (🚶 Walk the resort). Talk to your staff (lift operators, patrol, instructors, the dog handler and avalanche dog). Ride a lift and ski down.
 6. **Groom at night** in a snowcat, in 3D, using the headlights.

@@ -28,7 +28,7 @@ const World = {
     Weather.ensure();
     G.basePoint = { x: MAP_W * CELL * 0.5, y: MAP_H * CELL * 0.955 };
     G.baseDepth = 45; G.seasonSnow = 70;
-    this.buildStarterVillage(site.starter);
+    this.buildStarterVillage(true);
     Sim.startDay(true);
   },
 
