@@ -3,10 +3,11 @@ const START_DATE = Date.UTC(2026, 10, 3); // Nov 3
 let G = null;
 
 const World = {
-  newGame(seed) {
+  newGame(seed, site, name) {
+    site = site || SITES[1];
     G = {
-      version: 1, seed,
-      cash: 8000000, loan: 0, autoStaff: true, tut: { step: 0, on: true },
+      version: 2, seed, site, name: name || 'Powderline',
+      cash: 10000000 - (site.price || 0), loan: 0, autoStaff: true, tut: { step: 0, on: true },
       dayNum: 0, time: 7 * 60 + 30, phase: 'day', speed: 1,
       seasonOpen: false, seasonNum: 1, closedForSeason: false,
       runs: [], lifts: [], buildings: [], groomers: [], sleds: [], dogs: [],
@@ -23,18 +24,19 @@ const World = {
       incidentsActive: [], avalanches: [],
       tutorialDone: false,
     };
-    Terrain.generate(seed);
+    Terrain.generate(seed, site);
     Weather.ensure();
     G.basePoint = { x: MAP_W * CELL * 0.5, y: MAP_H * CELL * 0.955 };
     G.baseDepth = 45; G.seasonSnow = 70;
-    this.buildStarterVillage();
+    this.buildStarterVillage(site.starter);
     Sim.startDay(true);
   },
 
   // Free starter base area so new players can go straight to lifts & runs
-  buildStarterVillage() {
+  // Ground-up start: only your office. (full=true gives the old ready-made village.)
+  buildStarterVillage(full) {
     const b = G.basePoint;
-    const plan = [['ticket', -70, -10], ['lodge', 40, -10], ['parking', -175, 0], ['rental', -70, 32], ['patrolhq', 110, 25], ['garage', 195, 0]];
+    const plan = full ? [['office', 0, 60], ['ticket', -70, -10], ['lodge', 40, -10], ['parking', -175, 0], ['rental', -70, 32], ['patrolhq', 110, 25], ['garage', 195, 0]] : [['office', 0, 20]];
     for (const [kind, dx, dy] of plan) {
       let placed = false;
       for (let tries = 0; tries < 40 && !placed; tries++) {
@@ -46,8 +48,7 @@ const World = {
         placed = true;
       }
     }
-    G.groomers.push({ id: U.uid(), kind: 'std', name: 'Cat 1', hours: 0, condition: 1 });
-    G.sleds.push({ id: U.uid(), kind: 'patrol' });
+    if (full) { G.groomers.push({ id: U.uid(), kind: 'std', name: 'Cat 1', hours: 0, condition: 1 }); G.sleds.push({ id: U.uid(), kind: 'patrol' }); }
     this.rebuildNetwork();
     this.autoStaff();
   },
@@ -264,7 +265,7 @@ const World = {
 
   // ----- Network (connectivity graph) -----
   basePos() {
-    const l = this.built('lodge')[0] || G.buildings.find(b => b.kind === 'lodge') || this.built('ticket')[0];
+    const l = this.built('lodge')[0] || G.buildings.find(b => b.kind === 'lodge') || this.built('ticket')[0] || G.buildings.find(b => b.kind === 'ticket');
     return l ? { x: l.x, y: l.y } : G.basePoint;
   },
   rebuildNetwork() {

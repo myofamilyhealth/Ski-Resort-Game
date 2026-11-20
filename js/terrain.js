@@ -3,7 +3,9 @@ const Terrain = {
   N: MAP_W * MAP_H,
   idx: (x, y) => y * MAP_W + x,
 
-  generate(seed) {
+  generate(seed, site) {
+    site = site || { vert: 1, ridges: 1, peaks: 1, trees: 1, lake: true };
+    this.treeVer = (this.treeVer || 0) + 1;
     const N = this.N;
     this.seed = seed;
     this.elev = new Float32Array(N);
@@ -19,19 +21,19 @@ const Terrain = {
     this.dirtyTrees = new Set(); this.dirtySurf = new Set();
     const nz = new Noise(seed), nz2 = new Noise(seed + 77), nz3 = new Noise(seed + 991);
     const S = MAP_H * CELL / 1800; // size factor vs. the original 1.8 km map
-    const VERT = 640 * S;
+    const VERT = 640 * S * site.vert;
     for (let y = 0; y < MAP_H; y++) {
       for (let x = 0; x < MAP_W; x++) {
         const nx = x / MAP_W, ny = y / MAP_H;
         let h = 1580 + VERT * Math.pow(1 - ny, 1.6);
         // ridges & gullies running down the fall line
         const r = nz.ridge(nx * 3.2 * S + 3.1, ny * 1.1 * S + 1.7, 4);
-        h += 62 * (r - 0.5) * Math.pow(1 - ny, 0.7);
+        h += 62 * site.ridges * (r - 0.5) * Math.pow(1 - ny, 0.7);
         h += 24 * (nz2.fbm(nx * 6 * S, ny * 6 * S, 3) - 0.5);
         h += 7 * (nz2.fbm(nx * 30 * S + 9, ny * 30 * S, 2) - 0.5); // knolls, rolls & benches
         // summit peaks
         const pk = (cx, cy, s, a) => a * Math.exp(-((nx - cx) ** 2 + (ny - cy) ** 2) / (2 * s * s));
-        h += pk(0.3, 0.04, 0.12, 110 * S) + pk(0.74, 0.08, 0.11, 85 * S) + pk(0.52, 0.0, 0.09, 50 * S) + pk(0.12, 0.2, 0.08, 60 * S) + pk(0.9, 0.25, 0.07, 55 * S);
+        h += (pk(0.3, 0.04, 0.12, 110 * S) + pk(0.74, 0.08, 0.11, 85 * S) + pk(0.52, 0.0, 0.09, 50 * S) + pk(0.12, 0.2, 0.08, 60 * S) + pk(0.9, 0.25, 0.07, 55 * S)) * site.peaks;
         // flatten the valley floor for the base area
         if (ny > 0.9) { const t = (ny - 0.9) / 0.1; h = U.lerp(h, 1580 + 6 * (1 - t), Math.min(1, t * 0.9)); }
         this.elev[this.idx(x, y)] = h;
@@ -51,12 +53,12 @@ const Terrain = {
     this.elev = e2;
     this.minE = Infinity; this.maxE = -Infinity;
     for (let i = 0; i < N; i++) { this.minE = Math.min(this.minE, this.elev[i]); this.maxE = Math.max(this.maxE, this.elev[i]); }
-    this.makeWater();
+    this.makeWater(site.lake !== false);
     this.treeLine = this.maxE - 260;
     this.computeSlope();
     for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
       const i = this.idx(x, y), nx = x / MAP_W, ny = y / MAP_H;
-      let d = U.clamp(nz3.fbm(nx * 5, ny * 5, 4) * 2.6 - 1.15, 0, 1);
+      let d = U.clamp(nz3.fbm(nx * 5, ny * 5, 4) * 2.6 - 1.15 + (site.trees - 1) * 0.5, 0, 1);
       d = Math.max(d, U.clamp(nz3.fbm(nx * 16 + 5, ny * 16, 2) * 2.2 - 1.3, 0, 1) * 0.7);
       const h = this.elev[i];
       d *= U.clamp((this.treeLine - h) / 70, 0, 1);
@@ -70,9 +72,10 @@ const Terrain = {
   },
 
   // Frozen creeks (flow accumulation) and a pond near the base
-  makeWater() {
+  makeWater(lake) {
     const N = this.N, E = this.elev;
     this.water = new Uint8Array(N); // 1 = creek, 2 = pond
+    if (lake) {
     const lk = { x: Math.round(MAP_W * 0.22), y: Math.round(MAP_H * 0.93), r: Math.round(MAP_W * 0.03) };
     let lv = Infinity;
     for (let y = lk.y - lk.r; y <= lk.y + lk.r; y++) for (let x = lk.x - lk.r; x <= lk.x + lk.r; x++) if (Math.hypot(x - lk.x, (y - lk.y) * 1.4) <= lk.r) lv = Math.min(lv, this.e(x, y));
@@ -83,6 +86,7 @@ const Terrain = {
       if (d <= 1) { E[i] = lv; this.water[i] = 2; } else if (d < 2) E[i] = U.lerp(lv + 1, E[i], (d - 1));
     }
     this.lake = { x: (lk.x + 0.5) * CELL, y: (lk.y + 0.5) * CELL, r: lk.r * CELL };
+    } else this.lake = null;
     const order = Array.from({ length: N }, (_, i) => i).sort((a, b) => E[b] - E[a]);
     const acc = new Float32Array(N).fill(1);
     for (const i of order) {
@@ -344,5 +348,5 @@ const Terrain = {
     return out;
   },
   treeCost(cells) { let c = 0; for (const i of cells) c += this.trees[i] * 650; return c; },
-  clearTrees(cells) { for (const i of cells) if (this.trees[i] > 0) { this.trees[i] = 0; this.markTree(i); } },
+  clearTrees(cells) { let ch = false; for (const i of cells) if (this.trees[i] > 0) { this.trees[i] = 0; this.markTree(i); ch = true; } if (ch) this.treeVer++; },
 };

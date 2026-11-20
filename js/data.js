@@ -40,6 +40,9 @@ const LIFTS = {
 
 // Buildings. levels: array of {cost, days, upkeep, ...stats}
 const BUILDINGS = {
+  office:   { name: 'Resort Office', icon: '🏢', color: '#4f6272', r: 12, levels: [
+              { cost: 250000, days: 1, upkeep: 60 }],
+              desc: 'Your HQ. The Resort Manager computer is on your desk.' },
   ticket:   { name: 'Ticket Office', icon: '🎟️', color: '#e8a33d', r: 14, levels: [
               { cost: 180000, days: 2, upkeep: 120, cap: 1500, staff: 3 }, { cost: 250000, days: 2, upkeep: 180, cap: 4000, staff: 5 }, { cost: 420000, days: 3, upkeep: 260, cap: 9000, staff: 8 }],
               desc: 'Sells lift tickets. Capacity = max day visitors served. Required to open.' },
@@ -202,4 +205,14 @@ const SNOWGUNS = [
   { name: 'Basic Fan Guns', short: 'Basic', perM: 185, temp: -3, out: 1.0, cost: 1.0, crew: 1.0, desc: 'Manual fan guns. Need -3°C or colder.' },
   { name: 'Automated Fan Guns', short: 'Automated', perM: 120, temp: -2, out: 1.4, cost: 0.85, crew: 0.7, desc: 'Weather-sensing guns. Work at -2°C, 40% more snow, fewer crew.' },
   { name: 'Low-Energy Tower Guns', short: 'Tower', perM: 160, temp: -1, out: 1.8, cost: 0.65, crew: 0.5, desc: 'Top-of-the-line towers. Work at -1°C, 80% more snow, cheapest to run.' },
+];
+
+// Mountains you can buy at the start. Terrain is generated from these settings.
+const SITES = [
+  { key: 'cedar', name: 'Cedar Basin', price: 1200000, vert: 0.72, ridges: 0.6, peaks: 0.55, trees: 1.25, snow: 0.9, lake: true,
+    desc: 'A gentle, heavily forested valley with lots of easy terrain. Cheap land, great for families and beginners.', tags: ['Easy terrain', 'Lots of trees', 'Cheap'] },
+  { key: 'silver', name: 'Silver Creek Valley', price: 2200000, vert: 1.0, ridges: 1.0, peaks: 1.0, trees: 1.0, snow: 1.0, lake: true,
+    desc: 'A balanced mountain with creeks, a pond near the base and a mix of every run level.', tags: ['Balanced', 'Creeks & pond', 'Good snow'] },
+  { key: 'granite', name: 'Granite Peak', price: 3400000, vert: 1.3, ridges: 1.45, peaks: 1.5, trees: 0.75, snow: 1.2, lake: false,
+    desc: 'Huge vertical, cliffs, alpine bowls and deep snow. Expensive land, built for experts.', tags: ['Huge vertical', 'Steep & rocky', 'Most snow'] },
 ];

@@ -14,6 +14,11 @@ const UI = {
     document.querySelectorAll('[data-modal]').forEach(b => b.onclick = () => this.openModal(b.dataset.modal));
     document.querySelectorAll('[data-ov]').forEach(b => b.onclick = () => { Render.overlay = Render.overlay === b.dataset.ov ? 'none' : b.dataset.ov; this.refreshOverlayBtns(); });
     $('#btnEndShift').onclick = () => Drive.end('You ended your shift early.');
+    $('#btn3d').onclick = () => W3D.enter({ at: W3D.cameFromOffice ? 'office' : 'door' });
+    document.querySelectorAll('[data-speed3]').forEach(b => b.onclick = () => { G.speed = +b.dataset.speed3; this.refreshTop(); });
+    $('#h3skipDay').onclick = () => $('#btnSkip').click();
+    $('#h3skipSeason').onclick = () => $('#btnSeason').click();
+    $('#h3open').onclick = () => $('#btnOpen').click();
     document.addEventListener('click', e => { const b = e.target.closest && e.target.closest('button'); if (b) b.blur(); });
     setInterval(() => { if (G) { this.refreshTop(); if (!this.tool && !document.activeElement.matches('input,select') && (this._pc = (this._pc || 0) + 1) % 3 === 0) this.renderPanel(); } }, 500);
   },
@@ -87,6 +92,7 @@ const UI = {
     window.addEventListener('keydown', e => {
       if (e.target.matches('input, textarea, select')) return;
       if (G && G.phase === 'drive') { Drive.key(e, true); if (e.key === 'Escape') Drive.end('You ended your shift early.'); return; }
+      if (W3D.active && !this.modal) return;
       this.keys[e.key.toLowerCase()] = true;
       const k = e.key.toLowerCase();
       if (k === 'escape') { if (this.modal && this.modal !== 'report' && this.modal !== 'start' && this.modal !== 'season') this.closeModal(); else if (this.tool && this.tool.points && this.tool.points.length) { this.tool.points = []; this.renderPanel(); } else { this.setTool('select'); this.sel = null; this.renderPanel(); } }
@@ -184,6 +190,7 @@ const UI = {
     } else if (t.kind === 'demolish') {
       const ent = this.pickEntity(w);
       if (!ent) return;
+      if (ent.kind === 'office') return this.toast('You can\'t demolish your own office!', 'bad');
       const name = ent.name || BUILDINGS[ent.kind]?.name;
       this.confirm(`Demolish ${name}? You'll recover 20% salvage value for lifts/buildings.`, () => {
         if (ent.type === 'run') World.removeRun(ent);
@@ -442,9 +449,12 @@ const UI = {
   guidePanel() {
     const has = (k) => World.built(k).length > 0 || G.buildings.some(b => b.kind === k);
     const steps = [
+      [G.buildings.some(b => b.kind === 'ticket'), 'Build a <b>Ticket Office</b>', 'building:ticket'],
+      [G.buildings.some(b => b.kind === 'lodge') && G.buildings.some(b => b.kind === 'parking'), 'Build a <b>Base Lodge</b> & <b>Parking Lot</b>', 'building:lodge'],
       [G.lifts.some(l => l.fromBase), 'Build a <b>lift</b> from the base', 'lift:double'],
       [G.runs.some(r => r.reachable), 'Draw a <b>run</b> from the lift top back down', 'run'],
       [G.runs.some(r => r.diff === 'green' && r.reachable), 'Add an easy <b>● green</b> run', 'run'],
+      [G.groomers.length > 0, 'Maintenance Shop + a <b>snowcat</b> (🚜 Fleet)', 'building:garage'],
       [G.lifts.some(l => l.buildDays <= 0), 'Speed up time until the lift is built', null],
       [G.seasonOpen, '<b>Open for the season!</b>', null],
       [G.runs.length >= 4, 'Grow: 4+ runs for more guests', 'run'],
@@ -549,6 +559,8 @@ const UI = {
     $('#depth').textContent = `${Math.round(G.baseDepth)}cm`;
     $('#btnOpen').style.display = G.seasonOpen ? 'none' : '';
     document.querySelectorAll('[data-speed]').forEach(b => b.classList.toggle('on', +b.dataset.speed === G.speed));
+    document.querySelectorAll('[data-speed3]').forEach(b => b.classList.toggle('on', +b.dataset.speed3 === G.speed));
+    const o3 = document.getElementById('h3open'); if (o3) o3.hidden = G.seasonOpen;
   },
   refreshOverlayBtns() { document.querySelectorAll('[data-ov]').forEach(b => b.classList.toggle('on', Render.overlay === b.dataset.ov)); },
 
@@ -841,12 +853,15 @@ const UI = {
   // Help
   m_help() {
     const tab = this.helpTab || 'start';
-    const tabs = { start: '🚀 Getting started', runs: '⛷️ Runs', lifts: '🚡 Lifts', groom: '🚜 Grooming', snow: '🌨️ Snow & weather', money: '💰 Money & guests', safety: '⛑️ Patrol & safety', keys: '⌨️ Controls' };
+    const tabs = { start: '🚀 Getting started', world: '🚶 3D world', runs: '⛷️ Runs', lifts: '🚡 Lifts', groom: '🚜 Grooming', snow: '🌨️ Snow & weather', money: '💰 Money & guests', safety: '⛑️ Patrol & safety', keys: '⌨️ Controls' };
     const body = {
       start: `<p><b>Your goal:</b> build a ski resort guests love, and grow it season after season.</p>
-        <ol class="howto big"><li><b>Build a lift</b> from the base village (🚡 Lifts).</li><li><b>Draw runs</b> from the top of the lift back down (⛷️ Runs).</li><li><b>Speed up time</b> (⏩ at the top) until the lift is built.</li><li>Click <b>🎿 Open for Season</b>.</li><li>Each evening, let the crew groom or <b>drive a snowcat yourself</b>.</li><li>Use your profits to add lifts, runs and buildings.</li></ol>
-        <p>Your base village (tickets, lodge, parking, rentals, patrol and snowcat garage), one snowcat and your staff are already set up. Staff are hired automatically.</p>
+        <ol class="howto big"><li>Build a <b>Ticket Office</b>, <b>Base Lodge</b> and <b>Parking Lot</b> (🏠 Build).</li><li><b>Build a lift</b> from the base (🚡 Lifts).</li><li><b>Draw runs</b> from the top of the lift back down (⛷️ Runs).</li><li><b>Speed up time</b> (⏩ at the top) until the lift is built.</li><li>Click <b>🎿 Open for Season</b>.</li><li>Each evening, let the crew groom or <b>drive a snowcat yourself</b>.</li><li>Use your profits to add lifts, runs and buildings.</li></ol>
+        <p>You start with just your office on a bare mountain. Build a Ticket Office, Base Lodge and Parking Lot first. Staff are hired automatically.</p>
         <button class="btn primary" id="restartTut">▶ Restart the step-by-step tutorial</button>`,
+      world: `<p>Click <b>🚶 Walk the resort</b> to go outside. Everything you build on this computer appears on the mountain: lifts with spinning chairs, your buildings, your staff and the guests skiing.</p>
+        <table class="tbl"><tr><td>Look around</td><td>Click the view, then move the mouse (or drag)</td></tr><tr><td>Walk / run</td><td>W A S D / hold Shift</td></tr><tr><td>Interact</td><td>E: use the office computer, ride a lift, talk to staff</td></tr><tr><td>Skis on / off</td><td>K</td></tr><tr><td>Skiing</td><td>Look where you want to go · A/D turn · S snowplow · Space jump</td></tr><tr><td>Riding a lift</td><td>Hold Shift to speed up. You get off at the top with skis on.</td></tr><tr><td>Fast travel</td><td>Tab</td></tr><tr><td>Big map</td><td>M</td></tr></table>
+        <p>While a lift is being built you'll see the crews at work: helicopters fly towers in for chairlifts, tower cranes build gondola and tram stations, and an excavator digs footings for surface lifts.</p>`,
       runs: `<p>Runs are drawn by clicking down the mountain. They should <b>start at the top of a lift</b> and <b>end at the bottom of a lift or the base</b>. A ⚠️ means a run doesn't connect.</p>
         <p>A run's colour comes from its steepest part: <span class="g">● Green</span> easy, <span class="b">■ Blue</span> medium, <b>◆ Black</b> hard, <b>◆◆ Double black</b> experts only. While drawing, the map is coloured the same way. Zig-zagging across the slope makes a run easier.</p>
         <p>Guests come in every level: about 1 in 5 are beginners, so always have some green runs. More runs = more guests.</p>`,

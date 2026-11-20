@@ -8,7 +8,8 @@
 </head>
 <body>
 <header id="top">
-  <div class="brand">🏔️ <b>Powderline</b></div>
+  <div class="brand">🏔️ <b id="brandName">Powderline</b></div>
+  <button id="btn3d" class="btn walk" title="Leave the office and walk around your resort in 3D">🚶 Walk the resort</button>
   <div class="stat"><small>Cash</small><b id="cash">$0</b></div>
   <div class="stat"><small id="date">—</small><b id="clock">—</b></div>
   <div class="stat" title="Weather"><small>Weather</small><b id="wx">—</b></div>
@@ -60,9 +61,29 @@
   <aside id="panel"></aside>
 </main>
 <footer id="log"></footer>
+<div id="world3d">
+  <canvas id="c3d"></canvas>
+  <div id="h3stats" class="h3box"></div>
+  <div id="h3time" class="h3box">
+    <button data-speed3="0" title="Pause">⏸</button><button data-speed3="1" title="Normal">▶</button><button data-speed3="2" title="Fast">⏩</button><button data-speed3="4" title="Faster">⏩⏩</button><button data-speed3="10" title="Fastest">⏭</button>
+    <button id="h3skipDay">🌆 Skip day</button><button id="h3skipSeason">⏩ Skip season</button><button id="h3open" class="open">🎿 Open season</button><button id="btn3dOffice" title="Teleport to your office desk">💻 Office</button>
+  </div>
+  <canvas id="h3mini"></canvas>
+  <div id="h3mode" class="h3box"></div>
+  <div id="h3where"></div>
+  <div id="h3cross">+</div>
+  <div id="h3prompt" hidden></div>
+  <div id="h3msg" hidden></div>
+  <div id="h3help" class="h3box" hidden><b>Controls</b><br>Click the view to look with the mouse · <b>W A S D</b> move · <b>Shift</b> run<br><b>E</b> interact (office computer, ride lift, talk) · <b>K</b> skis on/off<br>Skiing: look where you want to go · <b>A/D</b> turn · <b>S</b> snowplow · <b>Space</b> jump<br>Riding: hold <b>Shift</b> to speed up · <b>Tab</b> fast travel · <b>M</b> big map · <b>H</b> hide help<br>Night grooming: <b>W/S</b> drive · <b>A/D</b> steer · <b>Space</b> tiller · <b>B</b> blade · <b>E</b> winch · <b>Esc</b> end shift</div>
+  <div id="h3travel" class="h3box" hidden></div>
+  <div id="h3tour" hidden></div>
+  <div id="h3intro" hidden><div class="intro-card"><h2>Welcome to <span id="h3introName"></span>! 🏔️</h2><p>This is your new office. The mountain outside is bare: no lifts, no runs, nothing yet.</p><ol><li><b>Click</b> this view to look around with the mouse.</li><li>Walk to the glowing computer on your desk with <b>W A S D</b>.</li><li>Press <b>E</b> to open the <b>Resort Manager</b> and start building.</li></ol><p class="hint">Come back outside any time with <b>🚶 Walk the resort</b> to see what you've built, ride your lifts and ski your runs.</p><button class="btn primary" onclick="document.getElementById('h3intro').hidden=true">Got it</button></div></div>
+</div>
 <div id="coach"></div>
+<div id="loading3d" hidden>🏔️ Generating the mountain…</div>
 <div id="modal"><div id="modalBox"></div></div>
 
+<script src="js/vendor/three.min.js"></script>
 <script src="js/util.js"></script>
 <script src="js/data.js"></script>
 <script src="js/terrain.js"></script>
@@ -73,6 +94,7 @@
 <script src="js/agents.js"></script>
 <script src="js/render.js"></script>
 <script src="js/ui.js"></script>
+<script src="js/world3d.js"></script>
 <script src="js/tutorial.js"></script>
 <script src="js/main.js"></script>
 </body>

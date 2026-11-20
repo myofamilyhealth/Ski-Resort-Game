@@ -336,6 +336,19 @@ const Render = {
         ctx.fillRect(mx - w / 2 - 4 / z, my - 8 / z, w + 8 / z, 16 / z);
         ctx.fillStyle = '#fff'; ctx.textBaseline = 'middle'; ctx.textAlign = 'center'; ctx.fillText(label, mx, my); ctx.textAlign = 'left';
       }
+      if (building) {
+        // construction animation: progress along the line + the right machine for the lift type
+        const prog = U.clamp(1 - l.buildDays / T.days, 0, 1);
+        ctx.strokeStyle = 'rgba(242,183,5,0.9)'; ctx.lineWidth = Math.max(3 / z, 3); ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(U.lerp(a.x, b.x, prog), U.lerp(a.y, b.y, prog)); ctx.stroke();
+        const ph = (now / 3500 + l.id * 0.37) % 1, pp = ph < 0.5 ? ph * 2 : 2 - ph * 2;
+        const icon = T.cat === 'Surface' ? '🚜' : (T.cat === 'Gondola' || T.cat === 'Tram') ? '🏗️' : '🚁';
+        let ix, iy;
+        if (icon === '🚁') { const tt = Math.min(1, prog + 0.08) * pp; ix = U.lerp(a.x, b.x, tt) + Math.sin(now / 300) * 3 / z; iy = U.lerp(a.y, b.y, tt) - 14 / z; }
+        else if (icon === '🏗️') { const end = prog < 0.5 ? a : b; ix = end.x + 18 / z; iy = end.y - 10 / z; }
+        else { const tt = Math.min(1, prog + 0.05); ix = U.lerp(a.x, b.x, tt) + Math.sin(now / 400) * 4 / z; iy = U.lerp(a.y, b.y, tt); }
+        ctx.font = `${18 / z}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(icon, ix, iy); ctx.textAlign = 'left';
+      }
       if (UI.sel === l) { ctx.strokeStyle = 'rgba(255,200,0,0.9)'; ctx.lineWidth = 3 / z; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke(); }
       if (!l.reachable && !building && z > 0.4) { ctx.fillStyle = '#ff9800'; ctx.font = `${14 / z}px sans-serif`; ctx.fillText('⚠', a.x + 8 / z, a.y); }
     }

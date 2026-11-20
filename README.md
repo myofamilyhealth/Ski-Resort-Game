@@ -1,12 +1,33 @@
 # 🏔️ Powderline: Ski Resort Tycoon
 
-A ski resort management sim that runs in your browser. You start with an empty mountain and build a working resort on it: cut trails through the forest, run lifts up the peaks, hire the crews, groom corduroy at night and keep guests safe through storm cycles and avalanche cycles.
+A ski resort game that runs in your browser. Tour three mountains in 3D and buy one. Name your resort, then build it from the ground up. Walk around the resort you built, ride your own lifts and ski your own runs in first person. You run the business from the **Resort Manager** computer on your office desk.
 
 ## Play
 
-There's nothing to install. Open `index.html` in Chrome, Edge, Firefox or Safari. The game autosaves every night to your browser's local storage, and **Continue** on the title screen picks up where you left off.
+Nothing to install. Open `index.html` in Chrome, Edge, Firefox or Safari (a computer with a mouse and keyboard works best). The game saves every night in your browser's storage.
 
-To play it online, enable **GitHub Pages** for this repo (Settings → Pages → deploy from branch) and open the URL it gives you.
+## How it plays
+
+1. **Choose a mountain.** Pick Cedar Basin (gentle and cheap), Silver Creek Valley (balanced) or Granite Peak (huge and steep). Fly over each one in 3D, buy one and name your resort.
+2. **Your office.** You start inside your office on a bare mountain. Walk to the desk and press **E** to open the Resort Manager.
+3. **Build** a ticket office, lodge, parking, lifts, runs and the village. Everything appears in the 3D world, which always matches the manager map.
+4. **Watch construction.** Helicopters fly towers in for chairlifts, tower cranes build gondola and tram stations, and excavators dig for surface lifts.
+5. **Go outside** (🚶 Walk the resort). Talk to your staff (lift operators, patrol, instructors, the dog handler and avalanche dog). Ride a lift and ski down.
+6. **Groom at night** in a snowcat, in 3D, using the headlights.
+7. **Speed up days** or **skip a whole season** whenever you like.
+
+### 3D controls
+| Input | Action |
+|---|---|
+| Click the view, then move the mouse | Look around |
+| W A S D / Shift | Walk / run |
+| E | Use the office computer, ride a lift, talk to people |
+| K | Skis on / off |
+| Skiing | Look where you want to go · A/D turn · S snowplow · Space jump |
+| Tab / M / H | Fast travel / big map / help |
+| Snowcat | W/S drive · A/D steer · Space tiller · B blade · E winch · Esc end shift |
+
+The 3D view is drawn with [Three.js](https://threejs.org) (bundled in `js/vendor`, MIT license), so the game works offline.
 
 ## What's in the game
 
@@ -55,5 +76,7 @@ js/grooming.js  night crews + drivable snowcat
 js/agents.js    animated skiers
 js/render.js    map rendering, night mode, minimap
 js/ui.js        tools, panels, management screens
-js/main.js      save/load, boot, main loop
+js/world3d.js   first-person 3D resort (terrain, trees, lifts, village, NPCs, skiing, grooming)
+js/tutorial.js  step-by-step guide
+js/main.js      mountain selection, save/load, boot, main loop
 ```

@@ -24,7 +24,7 @@ const Weather = {
     }
     if (s.left > 0) {
       const T = STORM_TYPES[s.kind];
-      const amt = U.lerp(T.snow[0], T.snow[1], Math.random());
+      const amt = U.lerp(T.snow[0], T.snow[1], Math.random()) * ((G && G.site && G.site.snow) || 1);
       day.storm = s.kind; day.type = s.kind === 'ar' && amt > 40 ? 'heavy' : 'snow';
       day.tHi = mean + T.temp + U.gauss() * 2 + 1; day.tLo = day.tHi - 5;
       day.wind = U.lerp(T.wind[0], T.wind[1], Math.random());
